@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruthApi.Services;
 using TruthApi.Models;
@@ -5,8 +6,10 @@ using TruthApi.Models;
 namespace TruthApi.Controllers
 {
     [ApiController]
-    [Route("api/v1/[controller]")]
+    [Route("api/v1/health")]
+    [Authorize(Roles = "Admin")]
     public class HealthController : ControllerBase
+
     {
         private readonly HealthService _healthService;
 
