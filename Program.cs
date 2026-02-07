@@ -21,6 +21,11 @@ builder.Services.Configure<JwtConfig>(
     builder.Configuration.GetSection("Jwt")
 );
 
+// Bind AwsConfig
+builder.Services.Configure<AwsConfig>(
+    builder.Configuration.GetSection("Aws")
+);
+
 // Configure JWT authentication
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtConfig = jwtSection.Get<JwtConfig>();
@@ -55,6 +60,13 @@ builder.Services.AddSingleton<HealthService>();
 
 // Register AuthService
 builder.Services.AddSingleton<AuthService>();
+
+// Register AwsEc2Service
+builder.Services.AddSingleton<AwsEc2Service>();
+
+// Register NeterokValidationServic
+builder.Services.AddSingleton<NetworkValidationService>();
+
 
 var app = builder.Build();
 
