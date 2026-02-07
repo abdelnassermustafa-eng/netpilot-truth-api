@@ -33,83 +33,50 @@ This repository currently contains the **enterprise API foundation**, including:
 - Standardized API response model
 - Global exception handling
 
-  Architecture Philosophy
+## Architecture Philosophy
 
 This project follows a truth-first engineering model:
 
 Truth → Validation → Automation
 
+- Instead of immediately changing infrastructure, the system:
+- Inspects the environment
+- Validates configurations
+- Explains the current state
+- Only then enables safe automation
 
-Instead of immediately changing infrastructure, the system:
+## Planned Development Roadmap
+### Phase 2 — Secure API Core
 
-Inspects the environment
+### JWT authentication
+- Role-based access control
+- Audit logging
+- Secure endpoints
 
-Validates configurations
+### Phase 3 — Cloud Validation Engine
+- AWS environment inspection
+- Configuration validation rules
+- Drift detection
+- Safe read-only analysis
 
-Explains the current state
+### Phase 4 — Desktop Troubleshooting Tool
+- Engineer-focused desktop UI
+- Log and event inspection
+- Validation summaries
 
-Only then enables safe automation
+### Phase 5 — TechMaster Modern Platform
+- Interactive educational interface
+- Real system simulations
+- Visual troubleshooting workflows
+- Technology Stack
 
-Planned Development Roadmap
-Phase 2 — Secure API Core
-
-JWT authentication
-
-Role-based access control
-
-Audit logging
-
-Secure endpoints
-
-Phase 3 — Cloud Validation Engine
-
-AWS environment inspection
-
-Configuration validation rules
-
-Drift detection
-
-Safe read-only analysis
-
-Phase 4 — Desktop Troubleshooting Tool
-
-Engineer-focused desktop UI
-
-Log and event inspection
-
-Validation summaries
-
-Phase 5 — TechMaster Modern Platform
-
-Interactive educational interface
-
-Real system simulations
-
-Visual troubleshooting workflows
-
-Technology Stack
-
-.NET (ASP.NET Core)
-
-C#
-
-RESTful APIs
-
-Dependency Injection
-
-Structured logging
-
-Configuration-driven services
-
-Getting Started
+### Getting Started
 Prerequisites
-
-.NET SDK 10 or later
+- .NET SDK 10 or later
 
 Run locally
 dotnet build
 dotnet run
-
 
 Then test:
 
@@ -124,31 +91,21 @@ TruthApi/
 ├── Program.cs
 └── appsettings.json
 
-Long-Term Vision
+### Long-Term Vision
 
 This repository will evolve into the core inspection and validation service behind:
+- NetPilot cloud observability tools
+- Desktop engineering utilities
+- Educational platforms
+- Enterprise automation systems
 
-NetPilot cloud observability tools
-
-Desktop engineering utilities
-
-Educational platforms
-
-Enterprise automation systems
-
-Author
-
+## Author
 Nasser M Abdelghan
-
 Senior network and automation engineer with over two decades of experience in:
-
-Large-scale networking
-
-Cloud infrastructure
-
-Automation and observability
-
-Enterprise systems
+- Large-scale networking
+- Cloud infrastructure
+- Automation and observability
+- Enterprise systems
 
 ### Example endpoint
 
