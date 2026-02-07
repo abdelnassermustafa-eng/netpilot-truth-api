@@ -52,13 +52,13 @@ Truth → Validation → Automation
 - Explains the current state
 - Only then enables safe automation
 
-## Planned Development Roadmap
-
 ### Phase 3 — Cloud Validation Engine
 - AWS environment inspection
 - Configuration validation rules
 - Drift detection
 - Safe read-only analysis
+
+## Planned Development Roadmap
 
 ### Phase 4 — Desktop Troubleshooting Tool
 - Engineer-focused desktop UI
