@@ -1,0 +1,17 @@
+# .NET build folders
+bin/
+obj/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+*.log
+
+# macOS
+.DS_Store

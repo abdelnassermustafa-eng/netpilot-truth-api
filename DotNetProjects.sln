@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TruthApi", "TruthApi", "{597A1952-4810-A800-9628-17B4B6B16C5D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TruthApi", "TruthApi\TruthApi\TruthApi.csproj", "{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5E1170BE-8B0F-73A6-4FEB-986E2C9260E6} = {597A1952-4810-A800-9628-17B4B6B16C5D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {197AA34A-4139-408A-8E7A-C5AE0E91E336}
+	EndGlobalSection
+EndGlobal
