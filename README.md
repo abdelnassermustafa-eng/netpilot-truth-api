@@ -33,6 +33,13 @@ This repository currently contains the **enterprise API foundation**, including:
 - Standardized API response model
 - Global exception handling
 
+### Phase 2 — Secure API Core
+
+### JWT authentication
+- Role-based access control
+- Audit logging
+- Secure endpoints
+
 ## Architecture Philosophy
 
 This project follows a truth-first engineering model:
@@ -46,12 +53,6 @@ Truth → Validation → Automation
 - Only then enables safe automation
 
 ## Planned Development Roadmap
-### Phase 2 — Secure API Core
-
-### JWT authentication
-- Role-based access control
-- Audit logging
-- Secure endpoints
 
 ### Phase 3 — Cloud Validation Engine
 - AWS environment inspection
