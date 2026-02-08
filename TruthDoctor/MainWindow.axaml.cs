@@ -38,6 +38,12 @@ public partial class MainWindow : Window
         }
 
         var validation = await _apiService.GetValidationAsync();
+
+        statusText.Text = "Login successful";
+
+        var validationWindow = new ValidationWindow(validation, _apiService);
+        await validationWindow.ShowDialog(this);
+
         Console.WriteLine("RAW VALIDATION JSON:");
         Console.WriteLine(validation);
 
@@ -61,7 +67,7 @@ public partial class MainWindow : Window
         statusText.Text = "Login successful";
 
         // Open validation window
-        var validationWindow = new ValidationWindow(formattedJson);
-        await validationWindow.ShowDialog(this);
+        //var validationWindow = new ValidationWindow(formattedJson);
+        //await validationWindow.ShowDialog(this);
     }
 }

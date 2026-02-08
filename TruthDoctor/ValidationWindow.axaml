@@ -2,24 +2,44 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="TruthDoctor.ValidationWindow"
         Title="Network Validation"
-        Width="900"
-        Height="650">
+        Width="800"
+        Height="600">
 
     <Grid Margin="15" RowDefinitions="Auto,Auto,Auto,*">
 
-        <!-- Header -->
-        <TextBlock Text="Network Validation &amp; Troubleshooting"
-                   FontSize="20"
-                   FontWeight="Bold"
-                   Margin="0,0,0,10"
-                   Grid.Row="0"/>
+        <!-- Connection Status Bar -->
+        <Border Background="#0f172a"
+                Padding="6"
+                CornerRadius="4"
+                Grid.Row="0"
+                Margin="0,0,0,10">
+            <TextBlock Name="ConnectionStatusText"
+                       Text="Connecting..."
+                       Foreground="White"
+                       FontWeight="Bold"/>
+        </Border>
+
+        <!-- Header + Refresh -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <TextBlock Text="Network Validation &amp; Troubleshooting"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+
+            <Button Content="Refresh"
+                    Name="RefreshButton"
+                    Click="OnRefreshClicked"
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"/>
+        </Grid>
 
         <!-- Summary -->
         <Border Background="#1e293b"
                 Padding="10"
                 CornerRadius="6"
-                Grid.Row="1"
+                Grid.Row="2"
                 Margin="0,0,0,10">
+
             <StackPanel Orientation="Horizontal" Spacing="20">
                 <TextBlock Name="ScoreText"
                            Foreground="White"
@@ -31,20 +51,15 @@
                 <TextBlock Name="FailText"
                            Foreground="#ef4444"
                            FontWeight="Bold"/>
+                <TextBlock Name="TimestampText"
+                           Foreground="White"/>
             </StackPanel>
         </Border>
-
-        <!-- Timestamp -->
-        <TextBlock Name="TimestampText"
-                   Grid.Row="2"
-                   Margin="0,0,0,10"
-                   Opacity="0.8"/>
 
         <!-- Results Table -->
         <DataGrid Name="ResultsGrid"
                   Grid.Row="3"
                   AutoGenerateColumns="True"
-                  IsReadOnly="True"
-                  Height="450"/>
+                  IsReadOnly="True"/>
     </Grid>
 </Window>

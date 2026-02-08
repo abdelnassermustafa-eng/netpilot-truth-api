@@ -2,16 +2,52 @@ using Avalonia.Controls;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using TruthDoctor.Services;
 
 namespace TruthDoctor;
 
 public partial class ValidationWindow : Window
 {
-    public ValidationWindow(string json)
+    private readonly ApiService? _apiService;
+
+    // Required by Avalonia runtime loader
+    public ValidationWindow()
     {
         InitializeComponent();
+    }
+
+    // Used by your application logic
+    public ValidationWindow(string json, ApiService apiService)
+    {
+        InitializeComponent();
+        _apiService = apiService;
         LoadValidation(json);
     }
+
+
+    private async void OnRefreshClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var scoreText = this.FindControl<TextBlock>("ScoreText");
+
+        if (_apiService == null)
+        {
+            if (scoreText != null)
+                scoreText.Text = "Refresh unavailable (no API connection)";
+            return;
+        }
+
+        try
+        {
+            var json = await _apiService.GetValidationAsync();
+            LoadValidation(json);
+        }
+        catch (Exception ex)
+        {
+            if (scoreText != null)
+                scoreText.Text = "Refresh failed: " + ex.Message;
+        }
+    }
+
 
     private void LoadValidation(string json)
     {
@@ -19,21 +55,33 @@ public partial class ValidationWindow : Window
         var passText = this.FindControl<TextBlock>("PassText");
         var failText = this.FindControl<TextBlock>("FailText");
         var timestampText = this.FindControl<TextBlock>("TimestampText");
+        var statusText = this.FindControl<TextBlock>("ConnectionStatusText");
         var resultsGrid = this.FindControl<DataGrid>("ResultsGrid");
 
-        if (scoreText == null || passText == null || failText == null || resultsGrid == null)
+        if (scoreText == null || passText == null ||
+            failText == null || resultsGrid == null || statusText == null)
             return;
 
         try
         {
+            if (json.StartsWith("Error"))
+            {
+                statusText.Text = "🔴 API unreachable";
+                return;
+            }
+
             var doc = JsonDocument.Parse(json);
 
-            // Timestamp (top-level)
-            if (timestampText != null && doc.RootElement.TryGetProperty("timestamp", out var ts))
+            statusText.Text = "🟢 Connected";
+
+            // Timestamp
+            if (timestampText != null &&
+                doc.RootElement.TryGetProperty("timestamp", out var ts))
             {
                 var rawTs = ts.GetString() ?? "";
                 if (DateTime.TryParse(rawTs, out var parsed))
-                    timestampText.Text = "Last checked: " + parsed.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+                    timestampText.Text = "Last checked: " +
+                        parsed.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
                 else
                     timestampText.Text = "Last checked: " + rawTs;
             }
@@ -46,9 +94,14 @@ public partial class ValidationWindow : Window
             int pass = summary.GetProperty("pass").GetInt32();
             int fail = summary.GetProperty("fail").GetInt32();
 
-            scoreText.Text = $"Score: {score}%";
-            passText.Text = $"Pass: {pass}";
-            failText.Text = $"Fail: {fail}";
+            if (scoreText != null)
+                scoreText.Text = $"Score: {score}%";
+
+            if (passText != null)
+                passText.Text = $"Pass: {pass}";
+
+            if (failText != null)
+                failText.Text = $"Fail: {fail}";
 
             var rows = new List<ValidationRow>();
 
@@ -66,9 +119,11 @@ public partial class ValidationWindow : Window
 
             resultsGrid.ItemsSource = rows;
         }
-        catch (Exception ex)
+        catch
         {
-            scoreText.Text = "Failed to parse validation data: " + ex.Message;
+            statusText.Text = "🟡 Session expired or invalid response";
+            scoreText.Text = "Validation error";
         }
     }
+
 }

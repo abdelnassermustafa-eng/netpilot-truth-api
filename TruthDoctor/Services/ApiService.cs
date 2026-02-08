@@ -1,76 +1,71 @@
-using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace TruthDoctor.Services
+namespace TruthDoctor.Services;
+
+public class ApiService
 {
-    public class ApiService
+    private readonly HttpClient _client = new();
+    private string? _token;
+
+    private const string BaseUrl = "http://localhost:5029";
+
+    public async Task<bool> LoginAsync(string username, string password)
     {
-        private readonly HttpClient _httpClient;
-        private string? _token;
-
-        public ApiService()
+        var payload = new
         {
-            _httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("http://localhost:5029/")
-            };
-        }
+            username = username,
+            password = password
+        };
 
-        public async Task<bool> LoginAsync(string username, string password)
+        var response = await _client.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/auth/login",
+            payload
+        );
+
+        var json = await response.Content.ReadAsStringAsync();
+
+        try
         {
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync(
-                    "api/v1/auth/login",
-                    new { username, password }
-                );
+            var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
-                if (!response.IsSuccessStatusCode)
-                    return false;
-
-                var content = await response.Content.ReadAsStringAsync();
-
-                var doc = JsonDocument.Parse(content);
-                var token = doc.RootElement
-                    .GetProperty("data")
-                    .GetProperty("token")
-                    .GetString();
-
-                if (string.IsNullOrEmpty(token))
-                    return false;
-
-                _token = token;
-
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _token);
-
-                return true;
-            }
-            catch
+            if (!root.TryGetProperty("success", out var successProp) ||
+                !successProp.GetBoolean())
             {
                 return false;
             }
-        }
 
-        public async Task<string> GetValidationAsync()
+            if (root.TryGetProperty("data", out var dataProp) &&
+                dataProp.ValueKind == JsonValueKind.Object &&
+                dataProp.TryGetProperty("token", out var tokenProp))
+            {
+                _token = tokenProp.GetString();
+
+                if (!string.IsNullOrEmpty(_token))
+                {
+                    _client.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", _token);
+                }
+            }
+
+            return true;
+        }
+        catch
         {
-            try
-            {
-                var response = await _httpClient.GetAsync("api/v1/validate/network");
-
-                if (!response.IsSuccessStatusCode)
-                    return $"Error: {response.StatusCode}";
-
-                return await response.Content.ReadAsStringAsync();
-            }
-            catch (Exception ex)
-            {
-                return $"Exception: {ex.Message}";
-            }
+            return false;
         }
+    }
+
+    public async Task<string> GetValidationAsync()
+    {
+        var response = await _client.GetAsync(
+            $"{BaseUrl}/api/v1/validate/network"
+        );
+
+        return await response.Content.ReadAsStringAsync();
     }
 }
