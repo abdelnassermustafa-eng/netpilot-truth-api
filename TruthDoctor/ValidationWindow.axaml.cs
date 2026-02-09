@@ -10,6 +10,10 @@ public partial class ValidationWindow : Window
 {
     private readonly ApiService? _apiService;
 
+    private System.Timers.Timer? _autoRefreshTimer;
+    private bool _refreshInProgress = false;
+    private const int AutoRefreshIntervalMs = 20000;
+
     // Required by Avalonia runtime loader
     public ValidationWindow()
     {
@@ -22,6 +26,7 @@ public partial class ValidationWindow : Window
         InitializeComponent();
         _apiService = apiService;
         LoadValidation(json);
+        StartAutoRefresh();
     }
 
 
@@ -124,6 +129,46 @@ public partial class ValidationWindow : Window
             statusText.Text = "🟡 Session expired or invalid response";
             scoreText.Text = "Validation error";
         }
+    }
+
+
+    private void StartAutoRefresh()
+    {
+        _autoRefreshTimer = new System.Timers.Timer(AutoRefreshIntervalMs);
+        _autoRefreshTimer.Elapsed += async (s, e) =>
+        {
+            if (_refreshInProgress || _apiService == null)
+                return;
+
+            _refreshInProgress = true;
+
+            try
+            {
+                var json = await _apiService.GetValidationAsync();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    LoadValidation(json);
+                });
+            }
+            catch
+            {
+                // Ignore background refresh errors
+            }
+            finally
+            {
+                _refreshInProgress = false;
+            }
+        };
+
+        _autoRefreshTimer.AutoReset = true;
+        _autoRefreshTimer.Start();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _autoRefreshTimer?.Stop();
+        _autoRefreshTimer?.Dispose();
+        base.OnClosed(e);
     }
 
 }
