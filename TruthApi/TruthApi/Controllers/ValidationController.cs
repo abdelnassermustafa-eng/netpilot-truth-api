@@ -11,10 +11,14 @@ namespace TruthApi.Controllers;
 public class ValidationController : ControllerBase
 {
     private readonly NetworkValidationService _validationService;
+    private readonly AwsEc2Service _ec2Service;
 
-    public ValidationController(NetworkValidationService validationService)
+    public ValidationController(
+        NetworkValidationService validationService,
+        AwsEc2Service ec2Service)
     {
         _validationService = validationService;
+        _ec2Service = ec2Service;
     }
 
     [HttpGet("network")]
@@ -28,6 +32,11 @@ public class ValidationController : ControllerBase
 
         var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
+        // Phase 6.2 — resource inventories
+        var vpcRows = await _ec2Service.GetVpcResourceRowsAsync();
+        var subnetRows = await _ec2Service.GetSubnetResourceRowsAsync();
+        var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
+
         var report = new ValidationReport
         {
             Summary = new ValidationSummary
@@ -37,7 +46,12 @@ public class ValidationController : ControllerBase
                 Fail = fail,
                 Score = score
             },
-            Results = results
+            Results = results,
+
+            // Phase 6.2 additions
+            Vpcs = vpcRows,
+            Subnets = subnetRows,
+            RouteTables = routeTableRows
         };
 
         return Ok(new ApiResponse<ValidationReport>
@@ -47,6 +61,4 @@ public class ValidationController : ControllerBase
             Timestamp = DateTime.UtcNow
         });
     }
-
 }
-

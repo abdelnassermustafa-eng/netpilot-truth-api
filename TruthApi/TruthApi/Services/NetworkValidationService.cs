@@ -19,6 +19,8 @@ public class NetworkValidationService
         var subnets = await _ec2Service.GetSubnetsAsync();
         var routeTables = await _ec2Service.GetRouteTablesAsync();
 
+        var region = _ec2Service.Region;
+
         // ================================
         // Rule 1: VPC must have subnets
         // ================================
@@ -28,28 +30,26 @@ public class NetworkValidationService
                 .Where(s => s.VpcId == vpc.VpcId)
                 .ToList();
 
-            if (vpcSubnets.Count > 0)
+            bool pass = vpcSubnets.Count > 0;
+
+            results.Add(new ValidationResult
             {
-                results.Add(new ValidationResult
-                {
-                    Rule = "VPC_HAS_SUBNET",
-                    ResourceId = vpc.VpcId,
-                    Status = "PASS",
-                    Severity = "INFO",
-                    Message = "VPC contains at least one subnet"
-                });
-            }
-            else
-            {
-                results.Add(new ValidationResult
-                {
-                    Rule = "VPC_HAS_SUBNET",
-                    ResourceId = vpc.VpcId,
-                    Status = "FAIL",
-                    Severity = "CRITICAL",
-                    Message = "VPC has no subnets"
-                });
-            }
+                Category = "Networking",
+                Rule = "VPC_HAS_SUBNET",
+                ResourceType = "VPC",
+                ResourceId = vpc.VpcId,
+                Region = region,
+                CidrOrDestination = vpc.CidrBlock,
+                RouteTableId = "",
+                Status = pass ? "PASS" : "FAIL",
+                Severity = pass ? "INFO" : "CRITICAL",
+                Message = pass
+                    ? "VPC contains at least one subnet"
+                    : "VPC has no subnets",
+                Action = pass
+                    ? "No action required"
+                    : "Create at least one subnet in this VPC"
+            });
         }
 
         // ====================================
@@ -61,28 +61,27 @@ public class NetworkValidationService
                 .Where(r => r.VpcId == vpc.VpcId)
                 .ToList();
 
-            if (vpcRouteTables.Count > 0)
+            bool pass = vpcRouteTables.Count > 0;
+            var routeTableId = pass ? vpcRouteTables.First().RouteTableId : "";
+
+            results.Add(new ValidationResult
             {
-                results.Add(new ValidationResult
-                {
-                    Rule = "VPC_HAS_ROUTE_TABLE",
-                    ResourceId = vpc.VpcId,
-                    Status = "PASS",
-                    Severity = "INFO",
-                    Message = "VPC has at least one route table"
-                });
-            }
-            else
-            {
-                results.Add(new ValidationResult
-                {
-                    Rule = "VPC_HAS_ROUTE_TABLE",
-                    ResourceId = vpc.VpcId,
-                    Status = "FAIL",
-                    Severity = "CRITICAL",
-                    Message = "VPC has no route tables"
-                });
-            }
+                Category = "Networking",
+                Rule = "VPC_HAS_ROUTE_TABLE",
+                ResourceType = "VPC",
+                ResourceId = vpc.VpcId,
+                Region = region,
+                CidrOrDestination = vpc.CidrBlock,
+                RouteTableId = routeTableId,
+                Status = pass ? "PASS" : "FAIL",
+                Severity = pass ? "INFO" : "CRITICAL",
+                Message = pass
+                    ? "VPC has at least one route table"
+                    : "VPC has no route tables",
+                Action = pass
+                    ? "No action required"
+                    : "Create or associate a route table"
+            });
         }
 
         // =========================================
@@ -91,33 +90,28 @@ public class NetworkValidationService
         foreach (var subnet in subnets)
         {
             var parentVpc = vpcs.FirstOrDefault(v => v.VpcId == subnet.VpcId);
+            bool pass = parentVpc != null;
 
-            if (parentVpc != null)
+            results.Add(new ValidationResult
             {
-                results.Add(new ValidationResult
-                {
-                    Rule = "SUBNET_HAS_PARENT_VPC",
-                    ResourceId = subnet.SubnetId,
-                    Status = "PASS",
-                    Severity = "INFO",
-                    Message = "Subnet belongs to a VPC"
-                });
-            }
-            else
-            {
-                results.Add(new ValidationResult
-                {
-                    Rule = "SUBNET_HAS_PARENT_VPC",
-                    ResourceId = subnet.SubnetId,
-                    Status = "FAIL",
-                    Severity = "CRITICAL",
-                    Message = "Subnet is not associated with any VPC"
-                });
-            }
+                Category = "Networking",
+                Rule = "SUBNET_HAS_PARENT_VPC",
+                ResourceType = "Subnet",
+                ResourceId = subnet.SubnetId,
+                Region = region,
+                CidrOrDestination = subnet.CidrBlock,
+                RouteTableId = "",
+                Status = pass ? "PASS" : "FAIL",
+                Severity = pass ? "INFO" : "CRITICAL",
+                Message = pass
+                    ? "Subnet belongs to a VPC"
+                    : "Subnet is not associated with any VPC",
+                Action = pass
+                    ? "No action required"
+                    : "Associate subnet with a valid VPC"
+            });
         }
 
         return results;
     }
-
 }
-

@@ -1,0 +1,207 @@
+using Avalonia.Controls;
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using TruthDoctor.Services;
+
+namespace TruthDoctor;
+
+public partial class ValidationWindow : Window
+{
+    private readonly ApiService? _apiService;
+
+    private System.Timers.Timer? _autoRefreshTimer;
+    private bool _refreshInProgress = false;
+    private const int AutoRefreshIntervalMs = 20000;
+
+    // Required by Avalonia runtime loader
+    public ValidationWindow()
+    {
+        InitializeComponent();
+    }
+
+    // Used by your application logic
+    public ValidationWindow(string json, ApiService apiService)
+    {
+        InitializeComponent();
+        _apiService = apiService;
+        LoadValidation(json);
+        StartAutoRefresh();
+    }
+
+
+    private async void OnRefreshClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var scoreText = this.FindControl<TextBlock>("ScoreText");
+
+        if (_apiService == null)
+        {
+            if (scoreText != null)
+                scoreText.Text = "Refresh unavailable (no API connection)";
+            return;
+        }
+
+        try
+        {
+            var json = await _apiService.GetValidationAsync();
+            LoadValidation(json);
+        }
+        catch (Exception ex)
+        {
+            if (scoreText != null)
+                scoreText.Text = "Refresh failed: " + ex.Message;
+        }
+    }
+
+
+    private void LoadValidation(string json)
+    {
+        var scoreText = this.FindControl<TextBlock>("ScoreText");
+        var passText = this.FindControl<TextBlock>("PassText");
+        var failText = this.FindControl<TextBlock>("FailText");
+        var timestampText = this.FindControl<TextBlock>("TimestampText");
+        var statusText = this.FindControl<TextBlock>("ConnectionStatusText");
+        var resultsGrid = this.FindControl<DataGrid>("ResultsGrid");
+
+        if (scoreText == null || passText == null ||
+            failText == null || resultsGrid == null || statusText == null)
+            return;
+
+        try
+        {
+            if (json.StartsWith("Error"))
+            {
+                statusText.Text = "🔴 API unreachable";
+                return;
+            }
+
+            var doc = JsonDocument.Parse(json);
+
+            statusText.Text = "🟢 Connected";
+
+            // Timestamp
+            if (timestampText != null &&
+                doc.RootElement.TryGetProperty("timestamp", out var ts))
+            {
+                var rawTs = ts.GetString() ?? "";
+                if (DateTime.TryParse(rawTs, out var parsed))
+                    timestampText.Text = "Last checked: " +
+                        parsed.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+                else
+                    timestampText.Text = "Last checked: " + rawTs;
+            }
+
+            var data = doc.RootElement.GetProperty("data");
+            var summary = data.GetProperty("summary");
+            var results = data.GetProperty("results");
+
+            int score = summary.GetProperty("score").GetInt32();
+            int pass = summary.GetProperty("pass").GetInt32();
+            int fail = summary.GetProperty("fail").GetInt32();
+
+            if (scoreText != null)
+                scoreText.Text = $"Score: {score}%";
+
+            if (passText != null)
+                passText.Text = $"Pass: {pass}";
+
+            if (failText != null)
+                failText.Text = $"Fail: {fail}";
+
+            var rows = new List<ValidationRow>();
+
+            foreach (var r in results.EnumerateArray())
+            {
+                rows.Add(new ValidationRow
+                {
+                    Category = r.GetProperty("category").GetString() ?? "",
+                    Rule = r.GetProperty("rule").GetString() ?? "",
+                    ResourceType = r.GetProperty("resourceType").GetString() ?? "",
+                    ResourceId = r.GetProperty("resourceId").GetString() ?? "",
+                    Region = r.GetProperty("region").GetString() ?? "",
+                    CidrOrDestination = r.GetProperty("cidrOrDestination").GetString() ?? "",
+                    RouteTableId = r.GetProperty("routeTableId").GetString() ?? "",
+                    Status = r.GetProperty("status").GetString() ?? "",
+                    Severity = r.GetProperty("severity").GetString() ?? "",
+                    Message = r.GetProperty("message").GetString() ?? ""
+                });
+
+            }
+
+            resultsGrid.ItemsSource = rows;
+        }
+        catch
+        {
+            statusText.Text = "🟡 Session expired or invalid response";
+            scoreText.Text = "Validation error";
+        }
+    }
+
+
+    private void StartAutoRefresh()
+    {
+        _autoRefreshTimer = new System.Timers.Timer(AutoRefreshIntervalMs);
+        _autoRefreshTimer.Elapsed += async (s, e) =>
+        {
+            if (_refreshInProgress || _apiService == null)
+                return;
+
+            _refreshInProgress = true;
+
+            try
+            {
+                var json = await _apiService.GetValidationAsync();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    LoadValidation(json);
+                });
+            }
+            catch
+            {
+                // Ignore background refresh errors
+            }
+            finally
+            {
+                _refreshInProgress = false;
+            }
+        };
+
+        _autoRefreshTimer.AutoReset = true;
+        _autoRefreshTimer.Start();
+    }
+
+
+    private void OnAutoRefreshToggled(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var checkBox = this.FindControl<CheckBox>("AutoRefreshCheckBox");
+        if (checkBox == null)
+            return;
+
+        if (checkBox.IsChecked == true)
+        {
+            StartAutoRefresh();
+        }
+        else
+        {
+            StopAutoRefresh();
+        }
+    }
+
+    private void StopAutoRefresh()
+    {
+        if (_autoRefreshTimer != null)
+        {
+            _autoRefreshTimer.Stop();
+            _autoRefreshTimer.Dispose();
+            _autoRefreshTimer = null;
+        }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _autoRefreshTimer?.Stop();
+        _autoRefreshTimer?.Dispose();
+        base.OnClosed(e);
+    }
+
+}
