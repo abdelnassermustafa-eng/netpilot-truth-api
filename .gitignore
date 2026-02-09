@@ -1,17 +1,29 @@
-# .NET build folders
-bin/
-obj/
-
-# Visual Studio / Rider
-.vs/
-.idea/
+# dotenv files
+.env
 
 # User-specific files
-*.user
+*.rsuser
 *.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Logs
-*.log
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+
+# Rider / JetBrains
+.idea/
 
 # macOS
 .DS_Store
+
+# Logs
+*.log
