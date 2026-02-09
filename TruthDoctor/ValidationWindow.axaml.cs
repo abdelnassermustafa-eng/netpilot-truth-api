@@ -164,6 +164,33 @@ public partial class ValidationWindow : Window
         _autoRefreshTimer.Start();
     }
 
+
+    private void OnAutoRefreshToggled(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var checkBox = this.FindControl<CheckBox>("AutoRefreshCheckBox");
+        if (checkBox == null)
+            return;
+
+        if (checkBox.IsChecked == true)
+        {
+            StartAutoRefresh();
+        }
+        else
+        {
+            StopAutoRefresh();
+        }
+    }
+
+    private void StopAutoRefresh()
+    {
+        if (_autoRefreshTimer != null)
+        {
+            _autoRefreshTimer.Stop();
+            _autoRefreshTimer.Dispose();
+            _autoRefreshTimer = null;
+        }
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _autoRefreshTimer?.Stop();

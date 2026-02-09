@@ -19,20 +19,29 @@
                        FontWeight="Bold"/>
         </Border>
 
-        <!-- Header + Refresh -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                <!-- Header + Refresh -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
             <TextBlock Text="Network Validation &amp; Troubleshooting"
                        FontSize="20"
                        FontWeight="Bold"
                        VerticalAlignment="Center"/>
 
+            <CheckBox Name="AutoRefreshCheckBox"
+                      Content="Auto refresh (20s)"
+                      IsChecked="True"
+                      Grid.Column="1"
+                      VerticalAlignment="Center"
+                      Margin="0,0,10,0"
+                      Checked="OnAutoRefreshToggled"
+                      Unchecked="OnAutoRefreshToggled"/>
+
             <Button Content="Refresh"
                     Name="RefreshButton"
                     Click="OnRefreshClicked"
-                    Grid.Column="1"
+                    Grid.Column="2"
                     HorizontalAlignment="Right"/>
-        </Grid>
 
+        </Grid>
         <!-- Summary -->
         <Border Background="#1e293b"
                 Padding="10"
