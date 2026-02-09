@@ -1,0 +1,6 @@
+@TruthApi_HostAddress = http://localhost:5029
+
+GET {{TruthApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
