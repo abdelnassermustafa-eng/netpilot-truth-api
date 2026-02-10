@@ -1,0 +1,87 @@
+name: TruthDoctor Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: DotNetProjects/TruthDoctor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish Windows build
+        run: dotnet publish -c Release -r win-x64 --self-contained true
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TruthDoctor-win-x64
+          path: DotNetProjects/TruthDoctor/bin/Release/net10.0/win-x64/publish/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: DotNetProjects/TruthDoctor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish Linux build
+        run: dotnet publish -c Release -r linux-x64 --self-contained true
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TruthDoctor-linux-x64
+          path: DotNetProjects/TruthDoctor/bin/Release/net10.0/linux-x64/publish/
+
+  create-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: TruthDoctor-win-x64
+          path: win-x64
+
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: TruthDoctor-linux-x64
+          path: linux-x64
+
+      - name: Zip Windows build
+        run: zip -r TruthDoctor-win-x64.zip win-x64
+
+      - name: Zip Linux build
+        run: zip -r TruthDoctor-linux-x64.zip linux-x64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            TruthDoctor-win-x64.zip
+            TruthDoctor-linux-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
