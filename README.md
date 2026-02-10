@@ -1,3 +1,8 @@
+![.NET](https://img.shields.io/badge/.NET-10.0-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Release](https://img.shields.io/github/v/release/abdelnassermustafa-eng/netpilot-truth-api)
+
 # NetPilot Truth Platform
 
 A truth-first inspection and validation platform for cloud and infrastructure environments.
