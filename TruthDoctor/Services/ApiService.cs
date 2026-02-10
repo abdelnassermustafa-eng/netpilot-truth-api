@@ -13,6 +13,11 @@ public class ApiService
 
     private const string BaseUrl = "http://localhost:5029";
 
+    public ApiService()
+    {
+        _client.BaseAddress = new System.Uri(BaseUrl);
+    }
+
     public async Task<bool> LoginAsync(string username, string password)
     {
         var payload = new
@@ -22,7 +27,7 @@ public class ApiService
         };
 
         var response = await _client.PostAsJsonAsync(
-            $"{BaseUrl}/api/v1/auth/login",
+            "/api/v1/auth/login",
             payload
         );
 
@@ -63,9 +68,21 @@ public class ApiService
     public async Task<string> GetValidationAsync()
     {
         var response = await _client.GetAsync(
-            $"{BaseUrl}/api/v1/validate/network"
+            "/api/v1/validate/network"
         );
 
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    public async Task<string> ValidateAsync(object payload)
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/validate",
+            payload
+        );
+
+        response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync();
     }
 }

@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using TruthDoctor.Services;
 using System.Text.Json;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace TruthDoctor;
 
@@ -20,54 +22,75 @@ public partial class MainWindow : Window
         var usernameBox = this.FindControl<TextBox>("UsernameBox");
         var passwordBox = this.FindControl<TextBox>("PasswordBox");
         var statusText = this.FindControl<TextBlock>("StatusText");
+        var loginButton = this.FindControl<Button>("LoginButton");
 
-        if (usernameBox == null || passwordBox == null || statusText == null)
+        if (usernameBox == null || passwordBox == null || statusText == null || loginButton == null)
             return;
 
         var username = usernameBox.Text ?? "";
         var password = passwordBox.Text ?? "";
 
-        statusText.Text = "Logging in...";
-
-        var success = await _apiService.LoginAsync(username, password);
-
-        if (!success)
-        {
-            statusText.Text = "Login failed";
-            return;
-        }
-
-        var validation = await _apiService.GetValidationAsync();
-
-        statusText.Text = "Login successful";
-
-        var validationWindow = new ValidationWindow(validation, _apiService);
-        await validationWindow.ShowDialog(this);
-
-        Console.WriteLine("RAW VALIDATION JSON:");
-        Console.WriteLine(validation);
-
-
-        // Pretty-format JSON
-        string formattedJson = validation;
-
         try
         {
-            var jsonDoc = JsonDocument.Parse(validation);
-            formattedJson = JsonSerializer.Serialize(
-                jsonDoc,
-                new JsonSerializerOptions { WriteIndented = true }
-            );
+            loginButton.IsEnabled = false;
+            statusText.Text = "Logging in...";
+
+            var success = await _apiService.LoginAsync(username, password);
+
+            if (!success)
+            {
+                statusText.Text = "Login failed: invalid credentials";
+                loginButton.IsEnabled = true;
+                return;
+            }
+
+            statusText.Text = "Login successful. Fetching validation...";
+
+            var validation = await _apiService.GetValidationAsync();
+
+            // Pretty-format JSON
+            string formattedJson = validation;
+
+            try
+            {
+                var jsonDoc = JsonDocument.Parse(validation);
+                formattedJson = JsonSerializer.Serialize(
+                    jsonDoc,
+                    new JsonSerializerOptions { WriteIndented = true }
+                );
+            }
+            catch
+            {
+                // Keep raw text if parsing fails
+            }
+
+            // Open validation window
+            var validationWindow = new ValidationWindow(formattedJson, _apiService);
+            await validationWindow.ShowDialog(this);
+
+            Console.WriteLine("RAW VALIDATION JSON:");
+            Console.WriteLine(validation);
+
+            // Reset session state
+            usernameBox.Text = "";
+            passwordBox.Text = "";
+            statusText.Text = "Session ended. Please log in again.";
+            loginButton.IsEnabled = true;
         }
-        catch
+        catch (HttpRequestException)
         {
-            // Keep raw text if parsing fails
+            statusText.Text = "Error: Cannot reach API server";
+            loginButton.IsEnabled = true;
         }
-
-        statusText.Text = "Login successful";
-
-        // Open validation window
-        //var validationWindow = new ValidationWindow(formattedJson);
-        //await validationWindow.ShowDialog(this);
+        catch (TaskCanceledException)
+        {
+            statusText.Text = "Error: Request timed out";
+            loginButton.IsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            statusText.Text = $"Unexpected error: {ex.Message}";
+            loginButton.IsEnabled = true;
+        }
     }
 }

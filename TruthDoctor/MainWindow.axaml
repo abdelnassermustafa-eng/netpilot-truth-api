@@ -3,13 +3,26 @@
         x:Class="TruthDoctor.MainWindow"
         Title="TruthDoctor Login"
         Width="400"
-        Height="300">
+        Height="320">
 
-    <StackPanel Margin="20" Spacing="10">
+    <StackPanel Margin="20" Spacing="8">
         <TextBlock Text="TruthDoctor"
                    FontSize="20"
                    FontWeight="Bold"
                    HorizontalAlignment="Center"/>
+
+        <!-- App identity -->
+        <TextBlock Text="Version 1.0.0"
+                   FontSize="12"
+                   Opacity="0.7"
+                   HorizontalAlignment="Center"/>
+
+        <TextBlock Text="NetPilot — Nasser Abdelghani"
+                   FontSize="12"
+                   Opacity="0.7"
+                   HorizontalAlignment="Center"/>
+
+        <Separator Margin="0,5,0,5"/>
 
         <TextBlock Text="Username"/>
         <TextBox x:Name="UsernameBox"/>
@@ -17,7 +30,8 @@
         <TextBlock Text="Password"/>
         <TextBox x:Name="PasswordBox" PasswordChar="*"/>
 
-        <Button Content="Login"
+        <Button x:Name="LoginButton"
+                Content="Login"
                 Click="OnLoginClicked"
                 HorizontalAlignment="Center"
                 Width="120"/>

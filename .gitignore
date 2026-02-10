@@ -27,3 +27,9 @@
 
 # Logs
 *.log
+
+# Local backups
+*.bak
+
+# Build artifacts
+TruthDoctor/releases/
