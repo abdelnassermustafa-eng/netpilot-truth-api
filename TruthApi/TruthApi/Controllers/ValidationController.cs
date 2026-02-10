@@ -61,4 +61,46 @@ public class ValidationController : ControllerBase
             Timestamp = DateTime.UtcNow
         });
     }
+
+
+    [HttpPost("all")]
+    public async Task<IActionResult> ValidateAll()
+    {
+        var networkResults = await _validationService.ValidateNetworkAsync();
+
+        var computeValidator = new ComputeValidator();
+        var storageValidator = new StorageValidator();
+
+        var computeResults = computeValidator.Run();
+        var storageResults = storageValidator.Run();
+
+        var allResults = networkResults
+            .Concat(computeResults)
+            .Concat(storageResults)
+            .ToList();
+
+        var total = allResults.Count;
+        var pass = allResults.Count(r => r.Status == "PASS");
+        var fail = allResults.Count(r => r.Status == "FAIL");
+        var score = total == 0 ? 100 : (int)((double)pass / total * 100);
+
+        var report = new ValidationReport
+        {
+            Summary = new ValidationSummary
+            {
+                Total = total,
+                Pass = pass,
+                Fail = fail,
+                Score = score
+            },
+            Results = allResults
+        };
+
+        return Ok(new ApiResponse<ValidationReport>
+        {
+            Success = true,
+            Data = report,
+            Timestamp = DateTime.UtcNow
+        });
+    }
 }

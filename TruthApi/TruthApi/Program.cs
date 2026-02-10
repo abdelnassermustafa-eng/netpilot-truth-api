@@ -14,6 +14,9 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.WriteIndented = true;
     });
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 
 // Bind ServiceConfig
 builder.Services.Configure<ServiceConfig>(
@@ -91,6 +94,9 @@ app.UseExceptionHandler(errorApp =>
         var json = JsonSerializer.Serialize(error);
 
         await context.Response.WriteAsync(json);
+app.UseSwagger();
+app.UseSwaggerUI();
+
     });
 });
 
