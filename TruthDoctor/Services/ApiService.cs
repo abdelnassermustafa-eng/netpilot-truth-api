@@ -67,8 +67,9 @@ public class ApiService
 
     public async Task<string> GetValidationAsync()
     {
-        var response = await _client.GetAsync(
-            "/api/v1/validate/network"
+        var response = await _client.PostAsync(
+            "/api/v1/validate/all",
+            null
         );
 
         response.EnsureSuccessStatusCode();

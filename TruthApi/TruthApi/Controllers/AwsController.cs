@@ -101,6 +101,30 @@ namespace TruthApi.Controllers
             });
         }
 
+        [HttpGet("instances")]
+        [Authorize(Roles = "Admin,Viewer")]
+        public async Task<IActionResult> GetInstances()
+        {
+            var instances = await _ec2Service.GetInstancesAsync();
+
+            var result = instances.Select(i => new
+            {
+                instanceId = i.InstanceId,
+                instanceType = i.InstanceType?.Value,
+                state = i.State?.Name?.Value,
+                subnetId = i.SubnetId,
+                vpcId = i.VpcId,
+                availabilityZone = i.Placement?.AvailabilityZone
+            }).ToList();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Data = result,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
 
     }
 }

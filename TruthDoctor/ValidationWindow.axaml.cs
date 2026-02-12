@@ -62,6 +62,11 @@ public partial class ValidationWindow : Window
         var timestampText = this.FindControl<TextBlock>("TimestampText");
         var statusText = this.FindControl<TextBlock>("ConnectionStatusText");
         var resultsGrid = this.FindControl<DataGrid>("ResultsGrid");
+        var vpcGrid = this.FindControl<DataGrid>("VpcGrid");
+        var subnetGrid = this.FindControl<DataGrid>("SubnetGrid");
+        var routeGrid = this.FindControl<DataGrid>("RouteTableGrid");
+        var instanceGrid = this.FindControl<DataGrid>("InstanceGrid");
+
 
         if (scoreText == null || passText == null ||
             failText == null || resultsGrid == null || statusText == null)
@@ -204,10 +209,6 @@ public partial class ValidationWindow : Window
 
             resultsGrid.ItemsSource = rows;
 
-            
-            var vpcGrid = this.FindControl<DataGrid>("VpcGrid");
-            var subnetGrid = this.FindControl<DataGrid>("SubnetGrid");
-            var routeGrid = this.FindControl<DataGrid>("RouteTableGrid");
 
             // ==============================
             // Strongly-typed inventory binding
@@ -266,6 +267,28 @@ public partial class ValidationWindow : Window
                 }
                 routeGrid.ItemsSource = rtRows;
             }
+            // ==============================
+            // EC2 instance inventory
+            // ==============================
+            if (data.TryGetProperty("instances", out var instanceData) && instanceGrid != null)
+            {
+                var instanceRows = new List<object>();
+                foreach (var i in instanceData.EnumerateArray())
+                {
+                    instanceRows.Add(new
+                    {
+                        InstanceId = i.GetProperty("instanceId").GetString() ?? "",
+                        InstanceType = i.GetProperty("instanceType").GetString() ?? "",
+                        State = i.GetProperty("state").GetString() ?? "",
+                        SubnetId = i.GetProperty("subnetId").GetString() ?? "",
+                        VpcId = i.GetProperty("vpcId").GetString() ?? "",
+                        AvailabilityZone = i.GetProperty("availabilityZone").GetString() ?? ""
+                    });
+                }
+                instanceGrid.ItemsSource = instanceRows;
+            }
+
+
 
 
         }

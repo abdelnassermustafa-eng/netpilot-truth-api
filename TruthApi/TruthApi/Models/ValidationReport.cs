@@ -9,4 +9,5 @@ public class ValidationReport
     public List<VpcResourceRow> Vpcs { get; set; } = new();
     public List<SubnetResourceRow> Subnets { get; set; } = new();
     public List<RouteTableResourceRow> RouteTables { get; set; } = new();
+    public List<InstanceResourceRow> Instances { get; set; } = new();
 }

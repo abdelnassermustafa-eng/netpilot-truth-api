@@ -95,6 +95,15 @@
                       AutoGenerateColumns="True"
                       IsReadOnly="True"
                       Height="150"/>
+            <!-- EC2 Inventory -->
+            <TextBlock Text="EC2 Inventory"
+                       FontSize="16"
+                       FontWeight="Bold"/>
+            <DataGrid Name="InstanceGrid"
+                      AutoGenerateColumns="True"
+                      IsReadOnly="True"
+                      Height="150"/>
+
 
         </StackPanel>
     </ScrollViewer>

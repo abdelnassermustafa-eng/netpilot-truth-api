@@ -74,6 +74,10 @@ builder.Services.AddSingleton<AwsEc2Service>();
 // Register NeterokValidationServic
 builder.Services.AddSingleton<NetworkValidationService>();
 
+// Phase 6.3 validators
+builder.Services.AddSingleton<ComputeValidator>();
+builder.Services.AddSingleton<StorageValidator>();
+
 
 var app = builder.Build();
 
@@ -94,8 +98,8 @@ app.UseExceptionHandler(errorApp =>
         var json = JsonSerializer.Serialize(error);
 
         await context.Response.WriteAsync(json);
-app.UseSwagger();
-app.UseSwaggerUI();
+        app.UseSwagger();
+        app.UseSwaggerUI();
 
     });
 });

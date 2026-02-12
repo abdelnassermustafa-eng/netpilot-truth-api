@@ -12,13 +12,16 @@ public class ValidationController : ControllerBase
 {
     private readonly NetworkValidationService _validationService;
     private readonly AwsEc2Service _ec2Service;
+    private readonly ComputeValidator _computeValidator;
 
     public ValidationController(
         NetworkValidationService validationService,
-        AwsEc2Service ec2Service)
+        AwsEc2Service ec2Service,
+        ComputeValidator computeValidator)
     {
         _validationService = validationService;
         _ec2Service = ec2Service;
+        _computeValidator = computeValidator;
     }
 
     [HttpGet("network")]
@@ -29,13 +32,12 @@ public class ValidationController : ControllerBase
         var total = results.Count;
         var pass = results.Count(r => r.Status == "PASS");
         var fail = results.Count(r => r.Status == "FAIL");
-
         var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
-        // Phase 6.2 — resource inventories
         var vpcRows = await _ec2Service.GetVpcResourceRowsAsync();
         var subnetRows = await _ec2Service.GetSubnetResourceRowsAsync();
         var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
+        var instanceRows = await _ec2Service.GetInstanceResourceRowsAsync();
 
         var report = new ValidationReport
         {
@@ -47,11 +49,10 @@ public class ValidationController : ControllerBase
                 Score = score
             },
             Results = results,
-
-            // Phase 6.2 additions
             Vpcs = vpcRows,
             Subnets = subnetRows,
-            RouteTables = routeTableRows
+            RouteTables = routeTableRows,
+            Instances = instanceRows
         };
 
         return Ok(new ApiResponse<ValidationReport>
@@ -62,26 +63,53 @@ public class ValidationController : ControllerBase
         });
     }
 
-
     [HttpPost("all")]
     public async Task<IActionResult> ValidateAll()
     {
         var networkResults = await _validationService.ValidateNetworkAsync();
 
-        var computeValidator = new ComputeValidator();
-        var storageValidator = new StorageValidator();
+        var total = networkResults.Count;
+        var pass = networkResults.Count(r => r.Status == "PASS");
+        var fail = networkResults.Count(r => r.Status == "FAIL");
+        var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
-        var computeResults = computeValidator.Run();
-        var storageResults = storageValidator.Run();
+        var vpcRows = await _ec2Service.GetVpcResourceRowsAsync();
+        var subnetRows = await _ec2Service.GetSubnetResourceRowsAsync();
+        var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
+        var instanceRows = await _ec2Service.GetInstanceResourceRowsAsync();
 
-        var allResults = networkResults
-            .Concat(computeResults)
-            .Concat(storageResults)
-            .ToList();
+        var report = new ValidationReport
+        {
+            Summary = new ValidationSummary
+            {
+                Total = total,
+                Pass = pass,
+                Fail = fail,
+                Score = score
+            },
+            Results = networkResults,
+            Vpcs = vpcRows,
+            Subnets = subnetRows,
+            RouteTables = routeTableRows,
+            Instances = instanceRows
+        };
 
-        var total = allResults.Count;
-        var pass = allResults.Count(r => r.Status == "PASS");
-        var fail = allResults.Count(r => r.Status == "FAIL");
+        return Ok(new ApiResponse<ValidationReport>
+        {
+            Success = true,
+            Data = report,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    [HttpPost("compute")]
+    public IActionResult ValidateCompute()
+    {
+        var results = _computeValidator.Run();
+
+        var total = results.Count;
+        var pass = results.Count(r => r.Status == "PASS");
+        var fail = results.Count(r => r.Status == "FAIL");
         var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
         var report = new ValidationReport
@@ -93,7 +121,7 @@ public class ValidationController : ControllerBase
                 Fail = fail,
                 Score = score
             },
-            Results = allResults
+            Results = results
         };
 
         return Ok(new ApiResponse<ValidationReport>

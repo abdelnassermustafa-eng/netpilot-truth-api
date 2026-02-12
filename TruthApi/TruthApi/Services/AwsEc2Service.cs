@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Amazon;
 using Amazon.EC2;
 using Amazon.EC2.Model;
@@ -10,7 +14,7 @@ namespace TruthApi.Services
     {
         private readonly IAmazonEC2 _ec2Client;
 
-        // Phase 6.2 — expose region for validation results
+        // Phase 6.2 — expose region for validation
         public string Region { get; }
 
         public AwsEc2Service(IOptions<AwsConfig> awsConfig)
@@ -26,9 +30,7 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<Vpc>> GetVpcsAsync()
         {
-            var response = await _ec2Client.DescribeVpcsAsync(
-                new DescribeVpcsRequest());
-
+            var response = await _ec2Client.DescribeVpcsAsync(new DescribeVpcsRequest());
             return response.Vpcs ?? new List<Vpc>();
         }
 
@@ -37,9 +39,7 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<Subnet>> GetSubnetsAsync()
         {
-            var response = await _ec2Client.DescribeSubnetsAsync(
-                new DescribeSubnetsRequest());
-
+            var response = await _ec2Client.DescribeSubnetsAsync(new DescribeSubnetsRequest());
             return response.Subnets ?? new List<Subnet>();
         }
 
@@ -48,27 +48,47 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<RouteTable>> GetRouteTablesAsync()
         {
-            var response = await _ec2Client.DescribeRouteTablesAsync(
-                new DescribeRouteTablesRequest());
-
+            var response = await _ec2Client.DescribeRouteTablesAsync(new DescribeRouteTablesRequest());
             return response.RouteTables ?? new List<RouteTable>();
         }
 
         // ===============================
-        // VPC Resource Rows (Phase 6.2)
+        // EC2 Instances
+        // ===============================
+        public async Task<List<Instance>> GetInstancesAsync()
+        {
+            // Collect across all reservations (AWS returns instances grouped by reservation)
+            var response = await _ec2Client.DescribeInstancesAsync(new DescribeInstancesRequest());
+
+            var instances = new List<Instance>();
+
+            if (response.Reservations != null)
+            {
+                foreach (var res in response.Reservations)
+                {
+                    if (res.Instances != null && res.Instances.Count > 0)
+                        instances.AddRange(res.Instances);
+                }
+            }
+
+            return instances;
+        }
+
+        // ===============================
+        // Resource Row Helpers
         // ===============================
         public async Task<List<VpcResourceRow>> GetVpcResourceRowsAsync()
         {
             var vpcs = await GetVpcsAsync();
             var rows = new List<VpcResourceRow>();
 
-            foreach (var vpc in vpcs)
+            foreach (var v in vpcs)
             {
                 rows.Add(new VpcResourceRow
                 {
-                    VpcId = vpc.VpcId ?? "",
-                    Cidr = vpc.CidrBlock ?? "",
-                    State = vpc.State?.Value ?? "",
+                    VpcId = v.VpcId ?? "",
+                    Cidr = v.CidrBlock ?? "",
+                    State = v.State?.Value ?? "",
                     Region = Region
                 });
             }
@@ -76,9 +96,6 @@ namespace TruthApi.Services
             return rows;
         }
 
-        // ===============================
-        // Subnet Resource Rows (Phase 6.2)
-        // ===============================
         public async Task<List<SubnetResourceRow>> GetSubnetResourceRowsAsync()
         {
             var subnets = await GetSubnetsAsync();
@@ -93,7 +110,6 @@ namespace TruthApi.Services
                     Cidr = s.CidrBlock ?? "",
                     AvailabilityZone = s.AvailabilityZone ?? "",
                     State = s.State?.Value ?? "",
-                    Action = s.DefaultForAz == true ? "Cannot be deleted" : "Can be deleted",
                     Region = Region
                 });
             }
@@ -101,9 +117,6 @@ namespace TruthApi.Services
             return rows;
         }
 
-        // ===============================
-        // Route Table Resource Rows (Phase 6.2)
-        // ===============================
         public async Task<List<RouteTableResourceRow>> GetRouteTableResourceRowsAsync()
         {
             var routeTables = await GetRouteTablesAsync();
@@ -111,13 +124,13 @@ namespace TruthApi.Services
 
             foreach (var rt in routeTables)
             {
-                bool isMain = rt.Associations.Any(a => a.Main == true);
+                bool isMain = rt.Associations != null && rt.Associations.Any(a => a.Main == true);
 
-                var associatedSubnet = rt.Associations
+                var associatedSubnet = rt.Associations?
                     .FirstOrDefault(a => a.Main != true && !string.IsNullOrEmpty(a.SubnetId))
                     ?.SubnetId ?? "";
 
-                var routeCidr = rt.Routes
+                var routeCidr = rt.Routes?
                     .FirstOrDefault(r => !string.IsNullOrEmpty(r.DestinationCidrBlock))
                     ?.DestinationCidrBlock ?? "";
 
@@ -129,6 +142,28 @@ namespace TruthApi.Services
                     AssociationType = isMain ? "Main" : "Non-main",
                     AssociatedSubnetId = associatedSubnet,
                     DestinationCidr = routeCidr,
+                    Region = Region
+                });
+            }
+
+            return rows;
+        }
+
+        public async Task<List<InstanceResourceRow>> GetInstanceResourceRowsAsync()
+        {
+            var instances = await GetInstancesAsync();
+            var rows = new List<InstanceResourceRow>();
+
+            foreach (var i in instances)
+            {
+                rows.Add(new InstanceResourceRow
+                {
+                    InstanceId = i.InstanceId ?? "",
+                    InstanceType = i.InstanceType?.Value ?? "",
+                    State = i.State?.Name?.Value ?? "",
+                    SubnetId = i.SubnetId ?? "",
+                    VpcId = i.VpcId ?? "",
+                    AvailabilityZone = i.Placement?.AvailabilityZone ?? "",
                     Region = Region
                 });
             }
