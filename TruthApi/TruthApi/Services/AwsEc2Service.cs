@@ -190,22 +190,25 @@ namespace TruthApi.Services
 
             foreach (var igw in igws)
             {
-                var attachedVpcs = igw.Attachments
+                var attachments = igw.Attachments ?? new List<InternetGatewayAttachment>();
+
+                var attachedVpcs = attachments
                     .Where(a => !string.IsNullOrEmpty(a.VpcId))
                     .Select(a => a.VpcId);
 
-                var state = igw.Attachments.FirstOrDefault()?.State?.Value ?? "detached";
+                var state = attachments.FirstOrDefault()?.State?.Value ?? "detached";
 
                 rows.Add(new InternetGatewayResourceRow
                 {
-                    IgwId = igw.InternetGatewayId ?? "",
-                    AttachedVpcIds = string.Join(",", attachedVpcs),
-                    AttachmentState = state,
-                    Region = Region
-                });
-            }
-
-            return rows;
+                IgwId = igw.InternetGatewayId ?? "",
+                AttachedVpcIds = string.Join(",", attachedVpcs),
+                AttachmentState = state,
+                Region = Region
+            });
         }
+
+        return rows;
+    }
+  
     }
 }

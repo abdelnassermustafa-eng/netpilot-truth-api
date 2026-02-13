@@ -14,9 +14,9 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.WriteIndented = true;
     });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 // Bind ServiceConfig
 builder.Services.Configure<ServiceConfig>(
@@ -61,23 +61,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
-// Register HealthService
+// Register services
 builder.Services.AddSingleton<HealthService>();
-
-// Register AuthService
 builder.Services.AddSingleton<AuthService>();
-
-// Register AwsEc2Service
 builder.Services.AddSingleton<AwsEc2Service>();
-
-// Register NeterokValidationServic
 builder.Services.AddSingleton<NetworkValidationService>();
-
-// Phase 6.3 validators
 builder.Services.AddSingleton<ComputeValidator>();
 builder.Services.AddSingleton<StorageValidator>();
-
 
 var app = builder.Build();
 
@@ -88,28 +78,33 @@ app.UseExceptionHandler(errorApp =>
     {
         context.Response.ContentType = "application/json";
 
+        var exception = context.Features
+            .Get<IExceptionHandlerFeature>()
+            ?.Error;
+
         var error = new ErrorResponse
         {
             Success = false,
-            Error = "An unexpected error occurred",
+            Error = exception?.ToString() ?? "An unexpected error occurred",
             Timestamp = DateTime.UtcNow
         };
 
         var json = JsonSerializer.Serialize(error);
-
         await context.Response.WriteAsync(json);
-        app.UseSwagger();
-        app.UseSwaggerUI();
-
     });
 });
 
+// Enable Swagger (dev-friendly)
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseHttpsRedirection();
 
-// Add these two lines
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Simple audit middleware
 app.Use(async (context, next) =>
 {
     var user = context.User;
@@ -128,8 +123,6 @@ app.Use(async (context, next) =>
     await next();
 });
 
-
 app.MapControllers();
 
 app.Run();
-
