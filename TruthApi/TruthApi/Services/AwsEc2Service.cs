@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Amazon;
 using Amazon.EC2;
 using Amazon.EC2.Model;
@@ -14,13 +10,12 @@ namespace TruthApi.Services
     {
         private readonly IAmazonEC2 _ec2Client;
 
-        // Phase 6.2 — expose region for validation
+        // expose region
         public string Region { get; }
 
         public AwsEc2Service(IOptions<AwsConfig> awsConfig)
         {
             Region = awsConfig.Value.Region;
-
             var region = RegionEndpoint.GetBySystemName(Region);
             _ec2Client = new AmazonEC2Client(region);
         }
@@ -30,7 +25,9 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<Vpc>> GetVpcsAsync()
         {
-            var response = await _ec2Client.DescribeVpcsAsync(new DescribeVpcsRequest());
+            var response = await _ec2Client.DescribeVpcsAsync(
+                new DescribeVpcsRequest());
+
             return response.Vpcs ?? new List<Vpc>();
         }
 
@@ -39,7 +36,9 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<Subnet>> GetSubnetsAsync()
         {
-            var response = await _ec2Client.DescribeSubnetsAsync(new DescribeSubnetsRequest());
+            var response = await _ec2Client.DescribeSubnetsAsync(
+                new DescribeSubnetsRequest());
+
             return response.Subnets ?? new List<Subnet>();
         }
 
@@ -48,7 +47,9 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<RouteTable>> GetRouteTablesAsync()
         {
-            var response = await _ec2Client.DescribeRouteTablesAsync(new DescribeRouteTablesRequest());
+            var response = await _ec2Client.DescribeRouteTablesAsync(
+                new DescribeRouteTablesRequest());
+
             return response.RouteTables ?? new List<RouteTable>();
         }
 
@@ -57,8 +58,8 @@ namespace TruthApi.Services
         // ===============================
         public async Task<List<Instance>> GetInstancesAsync()
         {
-            // Collect across all reservations (AWS returns instances grouped by reservation)
-            var response = await _ec2Client.DescribeInstancesAsync(new DescribeInstancesRequest());
+            var response = await _ec2Client.DescribeInstancesAsync(
+                new DescribeInstancesRequest());
 
             var instances = new List<Instance>();
 
@@ -66,7 +67,7 @@ namespace TruthApi.Services
             {
                 foreach (var res in response.Reservations)
                 {
-                    if (res.Instances != null && res.Instances.Count > 0)
+                    if (res.Instances != null)
                         instances.AddRange(res.Instances);
                 }
             }
@@ -124,13 +125,13 @@ namespace TruthApi.Services
 
             foreach (var rt in routeTables)
             {
-                bool isMain = rt.Associations != null && rt.Associations.Any(a => a.Main == true);
+                bool isMain = rt.Associations.Any(a => a.Main == true);
 
-                var associatedSubnet = rt.Associations?
+                var associatedSubnet = rt.Associations
                     .FirstOrDefault(a => a.Main != true && !string.IsNullOrEmpty(a.SubnetId))
                     ?.SubnetId ?? "";
 
-                var routeCidr = rt.Routes?
+                var routeCidr = rt.Routes
                     .FirstOrDefault(r => !string.IsNullOrEmpty(r.DestinationCidrBlock))
                     ?.DestinationCidrBlock ?? "";
 
@@ -164,6 +165,42 @@ namespace TruthApi.Services
                     SubnetId = i.SubnetId ?? "",
                     VpcId = i.VpcId ?? "",
                     AvailabilityZone = i.Placement?.AvailabilityZone ?? "",
+                    Region = Region
+                });
+            }
+
+            return rows;
+        }
+
+        // ===============================
+        // Internet Gateways
+        // ===============================
+        public async Task<List<InternetGateway>> GetInternetGatewaysAsync()
+        {
+            var response = await _ec2Client.DescribeInternetGatewaysAsync(
+                new DescribeInternetGatewaysRequest());
+
+            return response.InternetGateways ?? new List<InternetGateway>();
+        }
+
+        public async Task<List<InternetGatewayResourceRow>> GetInternetGatewayResourceRowsAsync()
+        {
+            var igws = await GetInternetGatewaysAsync();
+            var rows = new List<InternetGatewayResourceRow>();
+
+            foreach (var igw in igws)
+            {
+                var attachedVpcs = igw.Attachments
+                    .Where(a => !string.IsNullOrEmpty(a.VpcId))
+                    .Select(a => a.VpcId);
+
+                var state = igw.Attachments.FirstOrDefault()?.State?.Value ?? "detached";
+
+                rows.Add(new InternetGatewayResourceRow
+                {
+                    IgwId = igw.InternetGatewayId ?? "",
+                    AttachedVpcIds = string.Join(",", attachedVpcs),
+                    AttachmentState = state,
                     Region = Region
                 });
             }
