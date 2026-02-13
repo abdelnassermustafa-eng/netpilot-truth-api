@@ -210,5 +210,40 @@ namespace TruthApi.Services
         return rows;
     }
   
+        // ===============================
+        // NAT Gateways
+        // ===============================
+        public async Task<List<NatGateway>> GetNatGatewaysAsync()
+        {
+            var response = await _ec2Client.DescribeNatGatewaysAsync(
+                new DescribeNatGatewaysRequest());
+
+            return response.NatGateways ?? new List<NatGateway>();
+        }
+
+        public async Task<List<NatGatewayResourceRow>> GetNatGatewayResourceRowsAsync()
+        {
+            var natGateways = await GetNatGatewaysAsync();
+            var rows = new List<NatGatewayResourceRow>();
+
+            foreach (var nat in natGateways)
+            {
+                var publicIp = nat.NatGatewayAddresses?
+                    .FirstOrDefault()?
+                    .PublicIp ?? "";
+
+                rows.Add(new NatGatewayResourceRow
+                {
+                    NatGatewayId = nat.NatGatewayId ?? "",
+                    State = nat.State?.Value ?? "",
+                    SubnetId = nat.SubnetId ?? "",
+                    VpcId = nat.VpcId ?? "",
+                    PublicIp = publicIp,
+                    Region = Region
+                });
+            }
+
+            return rows;
+        }
     }
 }

@@ -66,6 +66,8 @@ public partial class ValidationWindow : Window
         var subnetGrid = this.FindControl<DataGrid>("SubnetGrid");
         var routeGrid = this.FindControl<DataGrid>("RouteTableGrid");
         var instanceGrid = this.FindControl<DataGrid>("InstanceGrid");
+        var natGatewayGrid = this.FindControl<DataGrid>("NatGatewayGrid");
+
         var igwGrid = this.FindControl<DataGrid>("IgwGrid");
 if (scoreText == null || passText == null ||
             failText == null || resultsGrid == null || statusText == null)
@@ -287,6 +289,26 @@ if (scoreText == null || passText == null ||
                     });
                 }
                 instanceGrid.ItemsSource = instanceRows;
+            // ==============================
+            // NAT Gateway inventory
+            // ==============================
+            if (data.TryGetProperty("natGateways", out var natData) && natGatewayGrid != null)
+            {
+                var natRows = new List<object>();
+                foreach (var n in natData.EnumerateArray())
+                {
+                    natRows.Add(new
+                    {
+                        NatGatewayId = n.GetProperty("natGatewayId").GetString() ?? "",
+                        State = n.GetProperty("state").GetString() ?? "",
+                        SubnetId = n.GetProperty("subnetId").GetString() ?? "",
+                        VpcId = n.GetProperty("vpcId").GetString() ?? "",
+                        PublicIp = n.GetProperty("publicIp").GetString() ?? "",
+                        Region = n.GetProperty("region").GetString() ?? ""
+                    });
+                }
+                natGatewayGrid.ItemsSource = natRows;
+            }
             // ==============================
             // Internet Gateway inventory
             // ==============================

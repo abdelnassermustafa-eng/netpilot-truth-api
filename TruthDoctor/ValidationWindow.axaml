@@ -43,7 +43,8 @@
             <!-- Summary -->
             <Border Background="#1e293b"
                     Padding="10"
-                    CornerRadius="6">
+                    CornerRadius="6"
+                    Margin="0,0,0,15">
                 <StackPanel Orientation="Horizontal" Spacing="20">
                     <TextBlock Name="ScoreText"
                                Foreground="White"
@@ -59,7 +60,6 @@
                                Foreground="White"/>
                 </StackPanel>
             </Border>
-
             <!-- Validation Results -->
             <TextBlock Text="Validation Results"
                        FontSize="16"
@@ -107,13 +107,20 @@
             <!-- Internet Gateway Inventory -->
             <TextBlock Text="Internet Gateway Inventory"
                        FontSize="16"
-                       FontWeight="Bold"
-                       Margin="0,20,0,5"/>
+                       FontWeight="Bold"/>
             <DataGrid Name="IgwGrid"
                       AutoGenerateColumns="True"
                       IsReadOnly="True"
-                      Height="150"/>
+                      Height="120"/>
 
+            <!-- NAT Gateway Inventory -->
+            <TextBlock Text="NAT Gateway Inventory"
+                       FontSize="16"
+                       FontWeight="Bold"/>
+            <DataGrid Name="NatGatewayGrid"
+                      AutoGenerateColumns="True"
+                      IsReadOnly="True"
+                      Height="120"/>
 
         </StackPanel>
     </ScrollViewer>

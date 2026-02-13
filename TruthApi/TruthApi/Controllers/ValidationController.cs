@@ -79,6 +79,7 @@ public class ValidationController : ControllerBase
         var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
         var instanceRows = await _ec2Service.GetInstanceResourceRowsAsync();
         var igwRows = await _ec2Service.GetInternetGatewayResourceRowsAsync();
+        var natRows = await _ec2Service.GetNatGatewayResourceRowsAsync();
 
         var report = new ValidationReport
         {
@@ -94,6 +95,7 @@ public class ValidationController : ControllerBase
             Subnets = subnetRows,
             RouteTables = routeTableRows,
             Instances = instanceRows,
+            NatGateways = natRows,
             InternetGateways = igwRows
 
         };

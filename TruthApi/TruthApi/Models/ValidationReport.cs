@@ -10,4 +10,5 @@ public class ValidationReport
     public List<RouteTableResourceRow> RouteTables { get; set; } = new();
     public List<InstanceResourceRow> Instances { get; set; } = new();
     public List<InternetGatewayResourceRow> InternetGateways { get; set; } = new();
+    public List<NatGatewayResourceRow> NatGateways { get; set; } = new();
 }
