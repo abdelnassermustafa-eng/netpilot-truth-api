@@ -11,12 +11,17 @@ namespace TruthApi.Controllers;
 public class ValidationController : ControllerBase
 {
     private readonly NetworkValidationService _validationService;
-    private readonly ComputeValidator _computeValidator = new();
-    private readonly StorageValidator _storageValidator = new();
+    private readonly AwsEc2Service _ec2Service;
+    private readonly ComputeValidator _computeValidator;
 
-    public ValidationController(NetworkValidationService validationService)
+    public ValidationController(
+        NetworkValidationService validationService,
+        AwsEc2Service ec2Service,
+        ComputeValidator computeValidator)
     {
         _validationService = validationService;
+        _ec2Service = ec2Service;
+        _computeValidator = computeValidator;
     }
 
     [HttpGet("network")]
@@ -27,7 +32,88 @@ public class ValidationController : ControllerBase
         var total = results.Count;
         var pass = results.Count(r => r.Status == "PASS");
         var fail = results.Count(r => r.Status == "FAIL");
+        var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
+        var vpcRows = await _ec2Service.GetVpcResourceRowsAsync();
+        var subnetRows = await _ec2Service.GetSubnetResourceRowsAsync();
+        var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
+        var instanceRows = await _ec2Service.GetInstanceResourceRowsAsync();
+        var igwRows = await _ec2Service.GetInternetGatewayResourceRowsAsync();
+
+        var report = new ValidationReport
+        {
+            Summary = new ValidationSummary
+            {
+                Total = total,
+                Pass = pass,
+                Fail = fail,
+                Score = score
+            },
+            Results = results,
+            Vpcs = vpcRows,
+            Subnets = subnetRows,
+            RouteTables = routeTableRows,
+            Instances = instanceRows,
+            InternetGateways = igwRows
+        };
+
+        return Ok(new ApiResponse<ValidationReport>
+        {
+            Success = true,
+            Data = report,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    [HttpPost("all")]
+    public async Task<IActionResult> ValidateAll()
+    {
+        var networkResults = await _validationService.ValidateNetworkAsync();
+
+        var total = networkResults.Count;
+        var pass = networkResults.Count(r => r.Status == "PASS");
+        var fail = networkResults.Count(r => r.Status == "FAIL");
+        var score = total == 0 ? 100 : (int)((double)pass / total * 100);
+
+        var vpcRows = await _ec2Service.GetVpcResourceRowsAsync();
+        var subnetRows = await _ec2Service.GetSubnetResourceRowsAsync();
+        var routeTableRows = await _ec2Service.GetRouteTableResourceRowsAsync();
+        var instanceRows = await _ec2Service.GetInstanceResourceRowsAsync();
+        var igwRows = await _ec2Service.GetInternetGatewayResourceRowsAsync();
+
+        var report = new ValidationReport
+        {
+            Summary = new ValidationSummary
+            {
+                Total = total,
+                Pass = pass,
+                Fail = fail,
+                Score = score
+            },
+            Results = networkResults,
+            Vpcs = vpcRows,
+            Subnets = subnetRows,
+            RouteTables = routeTableRows,
+            Instances = instanceRows,
+            InternetGateways = igwRows
+        };
+
+        return Ok(new ApiResponse<ValidationReport>
+        {
+            Success = true,
+            Data = report,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    [HttpPost("compute")]
+    public IActionResult ValidateCompute()
+    {
+        var results = _computeValidator.Run();
+
+        var total = results.Count;
+        var pass = results.Count(r => r.Status == "PASS");
+        var fail = results.Count(r => r.Status == "FAIL");
         var score = total == 0 ? 100 : (int)((double)pass / total * 100);
 
         var report = new ValidationReport
@@ -49,43 +135,4 @@ public class ValidationController : ControllerBase
             Timestamp = DateTime.UtcNow
         });
     }
-
-    [HttpPost("all")]
-    public async Task<IActionResult> ValidateAll()
-    {
-        var networkResults = await _validationService.ValidateNetworkAsync();
-        var computeResults = _computeValidator.Run();
-        var storageResults = _storageValidator.Run();
-
-        var allResults = networkResults
-            .Concat(computeResults)
-            .Concat(storageResults)
-            .ToList();
-
-        var total = allResults.Count;
-        var pass = allResults.Count(r => r.Status == "PASS");
-        var fail = allResults.Count(r => r.Status == "FAIL");
-        var score = total == 0 ? 100 : (int)((double)pass / total * 100);
-
-        var report = new ValidationReport
-        {
-            Summary = new ValidationSummary
-            {
-                Total = total,
-                Pass = pass,
-                Fail = fail,
-                Score = score
-            },
-            Results = allResults
-        };
-
-        return Ok(new ApiResponse<ValidationReport>
-        {
-            Success = true,
-            Data = report,
-            Timestamp = DateTime.UtcNow
-        });
-    }
-
 }
-

@@ -104,6 +104,16 @@
                       IsReadOnly="True"
                       Height="150"/>
 
+            <!-- Internet Gateway Inventory -->
+            <TextBlock Text="Internet Gateway Inventory"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Margin="0,20,0,5"/>
+            <DataGrid Name="IgwGrid"
+                      AutoGenerateColumns="True"
+                      IsReadOnly="True"
+                      Height="150"/>
+
 
         </StackPanel>
     </ScrollViewer>

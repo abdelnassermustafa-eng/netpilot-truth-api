@@ -66,9 +66,8 @@ public partial class ValidationWindow : Window
         var subnetGrid = this.FindControl<DataGrid>("SubnetGrid");
         var routeGrid = this.FindControl<DataGrid>("RouteTableGrid");
         var instanceGrid = this.FindControl<DataGrid>("InstanceGrid");
-
-
-        if (scoreText == null || passText == null ||
+        var igwGrid = this.FindControl<DataGrid>("IgwGrid");
+if (scoreText == null || passText == null ||
             failText == null || resultsGrid == null || statusText == null)
             return;
 
@@ -84,6 +83,9 @@ public partial class ValidationWindow : Window
 
             statusText.Text = "🟢 Connected";
 
+            // Extract data object
+            var data = doc.RootElement.GetProperty("data");
+
             // Timestamp
             if (timestampText != null &&
                 doc.RootElement.TryGetProperty("timestamp", out var ts))
@@ -96,7 +98,6 @@ public partial class ValidationWindow : Window
                     timestampText.Text = "Last checked: " + rawTs;
             }
 
-            var data = doc.RootElement.GetProperty("data");
             var summary = data.GetProperty("summary");
             var results = data.GetProperty("results");
 
@@ -286,6 +287,25 @@ public partial class ValidationWindow : Window
                     });
                 }
                 instanceGrid.ItemsSource = instanceRows;
+            // ==============================
+            // Internet Gateway inventory
+            // ==============================
+            if (data.TryGetProperty("internetGateways", out var igwData) && igwGrid != null)
+            {
+                var igwRows = new List<object>();
+                foreach (var igw in igwData.EnumerateArray())
+                {
+                    igwRows.Add(new
+                    {
+                        IgwId = igw.GetProperty("igwId").GetString() ?? "",
+                        AttachedVpcIds = igw.GetProperty("attachedVpcIds").GetString() ?? "",
+                        AttachmentState = igw.GetProperty("attachmentState").GetString() ?? "",
+                        Region = igw.GetProperty("region").GetString() ?? ""
+                    });
+                }
+                igwGrid.ItemsSource = igwRows;
+            }
+
             }
 
 
