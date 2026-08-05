@@ -26,6 +26,10 @@ public sealed class AwsComputeInventory
     public IReadOnlyList<AwsEc2KeyPairInfo> KeyPairs { get; init; } =
         Array.Empty<AwsEc2KeyPairInfo>();
 
+    public IReadOnlyList<AwsLaunchTemplateInfo> LaunchTemplates
+    { get; init; } =
+        Array.Empty<AwsLaunchTemplateInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 

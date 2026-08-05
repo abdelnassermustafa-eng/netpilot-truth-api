@@ -15,6 +15,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly EbsSnapshotDiscoverer _snapshotDiscoverer;
     private readonly AmiDiscoverer _amiDiscoverer;
     private readonly Ec2KeyPairDiscoverer _keyPairDiscoverer;
+    private readonly LaunchTemplateDiscoverer _launchTemplateDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -23,7 +24,8 @@ public sealed class AwsComputeDiscoveryService
         EbsVolumeDiscoverer volumeDiscoverer,
         EbsSnapshotDiscoverer snapshotDiscoverer,
         AmiDiscoverer amiDiscoverer,
-        Ec2KeyPairDiscoverer keyPairDiscoverer)
+        Ec2KeyPairDiscoverer keyPairDiscoverer,
+        LaunchTemplateDiscoverer launchTemplateDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -32,6 +34,7 @@ public sealed class AwsComputeDiscoveryService
         _snapshotDiscoverer = snapshotDiscoverer;
         _amiDiscoverer = amiDiscoverer;
         _keyPairDiscoverer = keyPairDiscoverer;
+        _launchTemplateDiscoverer = launchTemplateDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -83,6 +86,12 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(keyPair => keyPair.Region)
                 .ThenBy(keyPair => keyPair.KeyName)
                 .ThenBy(keyPair => keyPair.KeyPairId)
+                .ToList(),
+            LaunchTemplates = regionalResults
+                .SelectMany(result => result.LaunchTemplates)
+                .OrderBy(template => template.Region)
+                .ThenBy(template => template.LaunchTemplateName)
+                .ThenBy(template => template.LaunchTemplateId)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -147,12 +156,19 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var launchTemplatesTask =
+                _launchTemplateDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
                 snapshotsTask,
                 imagesTask,
-                keyPairsTask);
+                keyPairsTask,
+                launchTemplatesTask);
 
             return new RegionalComputeResult
             {
@@ -160,7 +176,8 @@ public sealed class AwsComputeDiscoveryService
                 Volumes = await volumesTask,
                 Snapshots = await snapshotsTask,
                 Images = await imagesTask,
-                KeyPairs = await keyPairsTask
+                KeyPairs = await keyPairsTask,
+                LaunchTemplates = await launchTemplatesTask
             };
         }
         catch (Exception exception)
@@ -193,6 +210,10 @@ public sealed class AwsComputeDiscoveryService
         public IReadOnlyList<AwsEc2KeyPairInfo> KeyPairs
         { get; init; } =
             Array.Empty<AwsEc2KeyPairInfo>();
+
+        public IReadOnlyList<AwsLaunchTemplateInfo> LaunchTemplates
+        { get; init; } =
+            Array.Empty<AwsLaunchTemplateInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
