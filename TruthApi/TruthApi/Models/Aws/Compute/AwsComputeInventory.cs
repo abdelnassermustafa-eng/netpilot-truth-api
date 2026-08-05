@@ -64,6 +64,11 @@ public sealed class AwsComputeInventory
     { get; init; } =
         Array.Empty<AwsAutoScalingWarmPoolInfo>();
 
+    public IReadOnlyList<
+        AwsAutoScalingInstanceRefreshInfo> InstanceRefreshes
+    { get; init; } =
+        Array.Empty<AwsAutoScalingInstanceRefreshInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 

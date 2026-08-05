@@ -104,6 +104,7 @@ builder.Services.AddSingleton<AutoScalingScheduledActionDiscoverer>();
 builder.Services.AddSingleton<AutoScalingActivityDiscoverer>();
 builder.Services.AddSingleton<AutoScalingLifecycleHookDiscoverer>();
 builder.Services.AddSingleton<AutoScalingWarmPoolDiscoverer>();
+builder.Services.AddSingleton<AutoScalingInstanceRefreshDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
