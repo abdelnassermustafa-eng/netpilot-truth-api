@@ -39,6 +39,11 @@ public sealed class AwsComputeInventory
     { get; init; } =
         Array.Empty<AwsLaunchConfigurationInfo>();
 
+    public IReadOnlyList<AwsAutoScalingPolicyInfo>
+        AutoScalingPolicies
+    { get; init; } =
+        Array.Empty<AwsAutoScalingPolicyInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 
