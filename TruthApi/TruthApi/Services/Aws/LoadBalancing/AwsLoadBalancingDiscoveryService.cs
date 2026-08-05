@@ -11,15 +11,18 @@ public sealed class AwsLoadBalancingDiscoveryService
     private readonly AwsClientFactory _clientFactory;
     private readonly LoadBalancerDiscoverer _loadBalancerDiscoverer;
     private readonly ListenerDiscoverer _listenerDiscoverer;
+    private readonly ListenerRuleDiscoverer _listenerRuleDiscoverer;
 
     public AwsLoadBalancingDiscoveryService(
         AwsClientFactory clientFactory,
         LoadBalancerDiscoverer loadBalancerDiscoverer,
-        ListenerDiscoverer listenerDiscoverer)
+        ListenerDiscoverer listenerDiscoverer,
+        ListenerRuleDiscoverer listenerRuleDiscoverer)
     {
         _clientFactory = clientFactory;
         _loadBalancerDiscoverer = loadBalancerDiscoverer;
         _listenerDiscoverer = listenerDiscoverer;
+        _listenerRuleDiscoverer = listenerRuleDiscoverer;
     }
 
     public async Task<AwsLoadBalancingInventory> DiscoverAsync(
@@ -54,6 +57,13 @@ public sealed class AwsLoadBalancingDiscoveryService
                 .ThenBy(listener => listener.Port)
                 .ThenBy(listener => listener.Protocol)
                 .ThenBy(listener => listener.ListenerArn)
+                .ToList(),
+            ListenerRules = regionalResults
+                .SelectMany(result => result.ListenerRules)
+                .OrderBy(rule => rule.Region)
+                .ThenBy(rule => rule.ListenerArn)
+                .ThenBy(rule => rule.Priority)
+                .ThenBy(rule => rule.RuleArn)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -103,10 +113,18 @@ public sealed class AwsLoadBalancingDiscoveryService
                         .ToList(),
                     cancellationToken);
 
+            var listenerRules =
+                await _listenerRuleDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    listeners,
+                    cancellationToken);
+
             return new RegionalLoadBalancingResult
             {
                 LoadBalancers = loadBalancers,
-                Listeners = listeners
+                Listeners = listeners,
+                ListenerRules = listenerRules
             };
         }
         catch (Exception exception)
@@ -131,6 +149,11 @@ public sealed class AwsLoadBalancingDiscoveryService
         public IReadOnlyList<AwsListenerInfo> Listeners
         { get; init; } =
             Array.Empty<AwsListenerInfo>();
+
+        public IReadOnlyList<AwsListenerRuleInfo>
+            ListenerRules
+        { get; init; } =
+            Array.Empty<AwsListenerRuleInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();

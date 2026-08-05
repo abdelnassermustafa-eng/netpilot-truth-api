@@ -112,6 +112,7 @@ builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 // TruthDoctor Version 2 — ELBv2 discovery
 builder.Services.AddSingleton<LoadBalancerDiscoverer>();
 builder.Services.AddSingleton<ListenerDiscoverer>();
+builder.Services.AddSingleton<ListenerRuleDiscoverer>();
 builder.Services.AddSingleton<AwsLoadBalancingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

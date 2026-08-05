@@ -11,6 +11,15 @@ public sealed class AwsListenerActionInfo
 
     public string TargetGroupArn { get; init; } = "";
 
+    public IReadOnlyList<AwsForwardTargetGroupInfo>
+        ForwardTargetGroups
+    { get; init; } =
+        Array.Empty<AwsForwardTargetGroupInfo>();
+
+    public bool ForwardStickinessEnabled { get; init; }
+
+    public int? ForwardStickinessDurationSeconds { get; init; }
+
     public string RedirectProtocol { get; init; } = "";
 
     public string RedirectHost { get; init; } = "";
