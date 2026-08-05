@@ -21,6 +21,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly LaunchConfigurationDiscoverer _launchConfigurationDiscoverer;
     private readonly AutoScalingPolicyDiscoverer _autoScalingPolicyDiscoverer;
     private readonly AutoScalingScheduledActionDiscoverer _scheduledActionDiscoverer;
+    private readonly AutoScalingActivityDiscoverer _autoScalingActivityDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -34,7 +35,8 @@ public sealed class AwsComputeDiscoveryService
         AutoScalingGroupDiscoverer autoScalingGroupDiscoverer,
         LaunchConfigurationDiscoverer launchConfigurationDiscoverer,
         AutoScalingPolicyDiscoverer autoScalingPolicyDiscoverer,
-        AutoScalingScheduledActionDiscoverer scheduledActionDiscoverer)
+        AutoScalingScheduledActionDiscoverer scheduledActionDiscoverer,
+        AutoScalingActivityDiscoverer autoScalingActivityDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -48,6 +50,7 @@ public sealed class AwsComputeDiscoveryService
         _launchConfigurationDiscoverer = launchConfigurationDiscoverer;
         _autoScalingPolicyDiscoverer = autoScalingPolicyDiscoverer;
         _scheduledActionDiscoverer = scheduledActionDiscoverer;
+        _autoScalingActivityDiscoverer = autoScalingActivityDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -127,6 +130,13 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(action => action.Region)
                 .ThenBy(action => action.AutoScalingGroupName)
                 .ThenBy(action => action.ScheduledActionName)
+                .ToList(),
+            AutoScalingActivities = regionalResults
+                .SelectMany(result => result.AutoScalingActivities)
+                .OrderByDescending(activity => activity.StartedAt)
+                .ThenBy(activity => activity.Region)
+                .ThenBy(activity => activity.AutoScalingGroupName)
+                .ThenBy(activity => activity.ActivityId)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -222,6 +232,12 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var autoScalingActivitiesTask =
+                _autoScalingActivityDiscoverer.DiscoverAsync(
+                    autoScalingClient,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
@@ -232,7 +248,8 @@ public sealed class AwsComputeDiscoveryService
                 autoScalingGroupsTask,
                 launchConfigurationsTask,
                 autoScalingPoliciesTask,
-                scheduledActionsTask);
+                scheduledActionsTask,
+                autoScalingActivitiesTask);
 
             return new RegionalComputeResult
             {
@@ -245,7 +262,8 @@ public sealed class AwsComputeDiscoveryService
                 AutoScalingGroups = await autoScalingGroupsTask,
                 LaunchConfigurations = await launchConfigurationsTask,
                 AutoScalingPolicies = await autoScalingPoliciesTask,
-                ScheduledActions = await scheduledActionsTask
+                ScheduledActions = await scheduledActionsTask,
+                AutoScalingActivities = await autoScalingActivitiesTask
             };
         }
         catch (Exception exception)
@@ -301,6 +319,11 @@ public sealed class AwsComputeDiscoveryService
             ScheduledActions
         { get; init; } =
             Array.Empty<AwsAutoScalingScheduledActionInfo>();
+
+        public IReadOnlyList<AwsAutoScalingActivityInfo>
+            AutoScalingActivities
+        { get; init; } =
+            Array.Empty<AwsAutoScalingActivityInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
