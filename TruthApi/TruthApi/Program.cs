@@ -73,6 +73,7 @@ builder.Services.AddSingleton<AwsClientFactory>();
 builder.Services.AddSingleton<AwsIdentityService>();
 builder.Services.AddSingleton<AwsRegionService>();
 builder.Services.AddSingleton<VpcDiscoverer>();
+builder.Services.AddSingleton<SubnetDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

@@ -16,15 +16,18 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly AwsClientFactory _clientFactory;
     private readonly AwsIdentityService _identityService;
     private readonly VpcDiscoverer _vpcDiscoverer;
+    private readonly SubnetDiscoverer _subnetDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
         AwsIdentityService identityService,
-        VpcDiscoverer vpcDiscoverer)
+        VpcDiscoverer vpcDiscoverer,
+        SubnetDiscoverer subnetDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
         _vpcDiscoverer = vpcDiscoverer;
+        _subnetDiscoverer = subnetDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -149,7 +152,10 @@ public sealed class AwsNetworkingDiscoveryService
                     region,
                     cancellationToken);
             var subnetsTask =
-                GetAllSubnetsAsync(client, region, cancellationToken);
+                _subnetDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
             var routeTablesTask =
                 GetAllRouteTablesAsync(client, region, cancellationToken);
 
@@ -262,53 +268,6 @@ public sealed class AwsNetworkingDiscoveryService
                     CidrBlock = vpc.CidrBlock ?? "",
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
-                    Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsSubnetInfo>>
-        GetAllSubnetsAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsSubnetInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeSubnetsAsync(
-                new DescribeSubnetsRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var subnet in response.Subnets ?? [])
-            {
-                var tags = ToTagDictionary(subnet.Tags);
-
-                results.Add(new AwsSubnetInfo
-                {
-                    SubnetId = subnet.SubnetId ?? "",
-                    Name = GetName(tags),
-                    VpcId = subnet.VpcId ?? "",
-                    CidrBlock = subnet.CidrBlock ?? "",
-                    AvailabilityZone = subnet.AvailabilityZone ?? "",
-                    AvailabilityZoneId = subnet.AvailabilityZoneId ?? "",
-                    State = subnet.State?.Value ?? "",
-                    MapPublicIpOnLaunch =
-                        subnet.MapPublicIpOnLaunch ?? false,
-                    AvailableIpAddressCount =
-                        subnet.AvailableIpAddressCount ?? 0,
                     Region = region,
                     Tags = tags
                 });
