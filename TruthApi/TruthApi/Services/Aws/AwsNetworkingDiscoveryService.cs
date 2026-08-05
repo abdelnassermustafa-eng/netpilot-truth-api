@@ -19,6 +19,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly SubnetDiscoverer _subnetDiscoverer;
     private readonly RouteTableDiscoverer _routeTableDiscoverer;
     private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
+    private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
@@ -26,7 +27,8 @@ public sealed class AwsNetworkingDiscoveryService
         VpcDiscoverer vpcDiscoverer,
         SubnetDiscoverer subnetDiscoverer,
         RouteTableDiscoverer routeTableDiscoverer,
-        InternetGatewayDiscoverer internetGatewayDiscoverer)
+        InternetGatewayDiscoverer internetGatewayDiscoverer,
+        NatGatewayDiscoverer natGatewayDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -34,6 +36,7 @@ public sealed class AwsNetworkingDiscoveryService
         _subnetDiscoverer = subnetDiscoverer;
         _routeTableDiscoverer = routeTableDiscoverer;
         _internetGatewayDiscoverer = internetGatewayDiscoverer;
+        _natGatewayDiscoverer = natGatewayDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -175,7 +178,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var natGatewaysTask =
-                GetAllNatGatewaysAsync(
+                _natGatewayDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -278,69 +281,6 @@ public sealed class AwsNetworkingDiscoveryService
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
                     Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsNatGatewayInfo>>
-        GetAllNatGatewaysAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsNatGatewayInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeNatGatewaysAsync(
-                new DescribeNatGatewaysRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var gateway in response.NatGateways ?? [])
-            {
-                var tags = ToTagDictionary(gateway.Tags);
-
-                results.Add(new AwsNatGatewayInfo
-                {
-                    NatGatewayId = gateway.NatGatewayId ?? "",
-                    Name = GetName(tags),
-                    VpcId = gateway.VpcId ?? "",
-                    SubnetId = gateway.SubnetId ?? "",
-                    State = gateway.State?.Value ?? "",
-                    ConnectivityType =
-                        gateway.ConnectivityType?.Value ?? "",
-                    FailureCode = gateway.FailureCode ?? "",
-                    FailureMessage = gateway.FailureMessage ?? "",
-                    CreatedAt = gateway.CreateTime,
-                    DeletedAt = gateway.DeleteTime,
-                    Region = region,
-                    Addresses = (gateway.NatGatewayAddresses ?? [])
-                        .Select(address =>
-                            new AwsNatGatewayAddressInfo
-                            {
-                                AllocationId =
-                                    address.AllocationId ?? "",
-                                AssociationId =
-                                    address.AssociationId ?? "",
-                                NetworkInterfaceId =
-                                    address.NetworkInterfaceId ?? "",
-                                PrivateIp = address.PrivateIp ?? "",
-                                PublicIp = address.PublicIp ?? "",
-                                IsPrimary = address.IsPrimary ?? false,
-                                Status = address.Status?.Value ?? ""
-                            })
-                        .ToList(),
                     Tags = tags
                 });
             }
