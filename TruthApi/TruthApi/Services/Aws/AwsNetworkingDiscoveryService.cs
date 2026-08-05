@@ -1,6 +1,7 @@
 using Amazon.EC2.Model;
 using TruthApi.Models.Aws.Networking;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
+using TruthApi.Services.Aws.Networking.Discoverers.Connectivity;
 
 namespace TruthApi.Services.Aws;
 
@@ -17,19 +18,22 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly VpcDiscoverer _vpcDiscoverer;
     private readonly SubnetDiscoverer _subnetDiscoverer;
     private readonly RouteTableDiscoverer _routeTableDiscoverer;
+    private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
         AwsIdentityService identityService,
         VpcDiscoverer vpcDiscoverer,
         SubnetDiscoverer subnetDiscoverer,
-        RouteTableDiscoverer routeTableDiscoverer)
+        RouteTableDiscoverer routeTableDiscoverer,
+        InternetGatewayDiscoverer internetGatewayDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
         _vpcDiscoverer = vpcDiscoverer;
         _subnetDiscoverer = subnetDiscoverer;
         _routeTableDiscoverer = routeTableDiscoverer;
+        _internetGatewayDiscoverer = internetGatewayDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -165,7 +169,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var internetGatewaysTask =
-                GetAllInternetGatewaysAsync(
+                _internetGatewayDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -274,53 +278,6 @@ public sealed class AwsNetworkingDiscoveryService
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
                     Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsInternetGatewayInfo>>
-        GetAllInternetGatewaysAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsInternetGatewayInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeInternetGatewaysAsync(
-                new DescribeInternetGatewaysRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var gateway in response.InternetGateways ?? [])
-            {
-                var tags = ToTagDictionary(gateway.Tags);
-
-                results.Add(new AwsInternetGatewayInfo
-                {
-                    InternetGatewayId =
-                        gateway.InternetGatewayId ?? "",
-                    Name = GetName(tags),
-                    Region = region,
-                    Attachments = (gateway.Attachments ?? [])
-                        .Select(attachment =>
-                            new AwsInternetGatewayAttachmentInfo
-                            {
-                                VpcId = attachment.VpcId ?? "",
-                                State = attachment.State?.Value ?? ""
-                            })
-                        .ToList(),
                     Tags = tags
                 });
             }

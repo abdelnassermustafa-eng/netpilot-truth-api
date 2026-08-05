@@ -5,6 +5,7 @@ using TruthApi.Models;
 using TruthApi.Services;
 using TruthApi.Services.Aws;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
+using TruthApi.Services.Aws.Networking.Discoverers.Connectivity;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
 
@@ -75,6 +76,7 @@ builder.Services.AddSingleton<AwsRegionService>();
 builder.Services.AddSingleton<VpcDiscoverer>();
 builder.Services.AddSingleton<SubnetDiscoverer>();
 builder.Services.AddSingleton<RouteTableDiscoverer>();
+builder.Services.AddSingleton<InternetGatewayDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
