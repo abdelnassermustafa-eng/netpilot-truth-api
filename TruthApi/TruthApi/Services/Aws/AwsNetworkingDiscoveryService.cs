@@ -1,7 +1,6 @@
 using Amazon.EC2.Model;
-using Ec2Route = Amazon.EC2.Model.Route;
 using TruthApi.Models.Aws.Networking;
-using TruthApi.Services.Aws.Networking.Discoverers;
+using TruthApi.Services.Aws.Networking.Discoverers.Core;
 
 namespace TruthApi.Services.Aws;
 
@@ -17,17 +16,20 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly AwsIdentityService _identityService;
     private readonly VpcDiscoverer _vpcDiscoverer;
     private readonly SubnetDiscoverer _subnetDiscoverer;
+    private readonly RouteTableDiscoverer _routeTableDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
         AwsIdentityService identityService,
         VpcDiscoverer vpcDiscoverer,
-        SubnetDiscoverer subnetDiscoverer)
+        SubnetDiscoverer subnetDiscoverer,
+        RouteTableDiscoverer routeTableDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
         _vpcDiscoverer = vpcDiscoverer;
         _subnetDiscoverer = subnetDiscoverer;
+        _routeTableDiscoverer = routeTableDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -157,7 +159,10 @@ public sealed class AwsNetworkingDiscoveryService
                     region,
                     cancellationToken);
             var routeTablesTask =
-                GetAllRouteTablesAsync(client, region, cancellationToken);
+                _routeTableDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
 
             var internetGatewaysTask =
                 GetAllInternetGatewaysAsync(
@@ -269,55 +274,6 @@ public sealed class AwsNetworkingDiscoveryService
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
                     Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsRouteTableInfo>>
-        GetAllRouteTablesAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsRouteTableInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeRouteTablesAsync(
-                new DescribeRouteTablesRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var routeTable in response.RouteTables ?? [])
-            {
-                var tags = ToTagDictionary(routeTable.Tags);
-                var associations = routeTable.Associations ?? [];
-                var routes = routeTable.Routes ?? [];
-
-                results.Add(new AwsRouteTableInfo
-                {
-                    RouteTableId = routeTable.RouteTableId ?? "",
-                    Name = GetName(tags),
-                    VpcId = routeTable.VpcId ?? "",
-                    IsMain = associations.Any(
-                        association => association.Main == true),
-                    Region = region,
-                    Associations = associations
-                        .Select(ToAssociationInfo)
-                        .ToList(),
-                    Routes = routes
-                        .Select(ToRouteInfo)
-                        .ToList(),
                     Tags = tags
                 });
             }
@@ -864,74 +820,6 @@ public sealed class AwsNetworkingDiscoveryService
         return results;
     }
 
-    private static AwsRouteTableAssociationInfo ToAssociationInfo(
-        RouteTableAssociation association)
-    {
-        return new AwsRouteTableAssociationInfo
-        {
-            AssociationId =
-                association.RouteTableAssociationId ?? "",
-            SubnetId = association.SubnetId ?? "",
-            GatewayId = association.GatewayId ?? "",
-            IsMain = association.Main == true,
-            State = association.AssociationState?
-                .State?
-                .Value ?? ""
-        };
-    }
-
-    private static AwsRouteInfo ToRouteInfo(Ec2Route route)
-    {
-        var destination =
-            FirstNonEmpty(
-                route.DestinationCidrBlock,
-                route.DestinationIpv6CidrBlock,
-                route.DestinationPrefixListId);
-
-        var (targetType, targetId) = GetRouteTarget(route);
-
-        return new AwsRouteInfo
-        {
-            Destination = destination,
-            TargetType = targetType,
-            TargetId = targetId,
-            State = route.State?.Value ?? "",
-            Origin = route.Origin?.Value ?? ""
-        };
-    }
-
-    private static (string TargetType, string TargetId) GetRouteTarget(
-        Ec2Route route)
-    {
-        if (!string.IsNullOrWhiteSpace(route.GatewayId))
-            return ("Gateway", route.GatewayId);
-
-        if (!string.IsNullOrWhiteSpace(route.NatGatewayId))
-            return ("NatGateway", route.NatGatewayId);
-
-        if (!string.IsNullOrWhiteSpace(route.InstanceId))
-            return ("Instance", route.InstanceId);
-
-        if (!string.IsNullOrWhiteSpace(route.NetworkInterfaceId))
-            return ("NetworkInterface", route.NetworkInterfaceId);
-
-        if (!string.IsNullOrWhiteSpace(route.TransitGatewayId))
-            return ("TransitGateway", route.TransitGatewayId);
-
-        if (!string.IsNullOrWhiteSpace(route.VpcPeeringConnectionId))
-            return ("VpcPeeringConnection", route.VpcPeeringConnectionId);
-
-        if (!string.IsNullOrWhiteSpace(
-                route.EgressOnlyInternetGatewayId))
-        {
-            return (
-                "EgressOnlyInternetGateway",
-                route.EgressOnlyInternetGatewayId);
-        }
-
-        return ("Unknown", "");
-    }
-
     private static IReadOnlyDictionary<string, string> ToTagDictionary(
         List<Tag>? tags)
     {
@@ -958,13 +846,6 @@ public sealed class AwsNetworkingDiscoveryService
         return tags.TryGetValue("Name", out var name)
             ? name
             : "";
-    }
-
-    private static string FirstNonEmpty(params string?[] values)
-    {
-        return values.FirstOrDefault(
-                   value => !string.IsNullOrWhiteSpace(value))
-               ?? "";
     }
 
     private sealed class RegionalNetworkingResult

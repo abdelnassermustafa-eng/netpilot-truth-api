@@ -3,7 +3,7 @@ using Amazon.EC2.Model;
 using TruthApi.Models.Aws.Networking;
 using TruthApi.Services.Aws.Networking.Infrastructure;
 
-namespace TruthApi.Services.Aws.Networking.Discoverers;
+namespace TruthApi.Services.Aws.Networking.Discoverers.Core;
 
 /// <summary>
 /// Discovers all subnets in one AWS Region.
