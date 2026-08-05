@@ -81,6 +81,7 @@ builder.Services.AddSingleton<InternetGatewayDiscoverer>();
 builder.Services.AddSingleton<NatGatewayDiscoverer>();
 builder.Services.AddSingleton<VpcEndpointDiscoverer>();
 builder.Services.AddSingleton<ElasticIpDiscoverer>();
+builder.Services.AddSingleton<NetworkInterfaceDiscoverer>();
 builder.Services.AddSingleton<SecurityGroupDiscoverer>();
 builder.Services.AddSingleton<NetworkAclDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();

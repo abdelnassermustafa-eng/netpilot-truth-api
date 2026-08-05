@@ -23,6 +23,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
     private readonly VpcEndpointDiscoverer _vpcEndpointDiscoverer;
     private readonly ElasticIpDiscoverer _elasticIpDiscoverer;
+    private readonly NetworkInterfaceDiscoverer _networkInterfaceDiscoverer;
     private readonly SecurityGroupDiscoverer _securityGroupDiscoverer;
     private readonly NetworkAclDiscoverer _networkAclDiscoverer;
 
@@ -36,6 +37,7 @@ public sealed class AwsNetworkingDiscoveryService
         NatGatewayDiscoverer natGatewayDiscoverer,
         VpcEndpointDiscoverer vpcEndpointDiscoverer,
         ElasticIpDiscoverer elasticIpDiscoverer,
+        NetworkInterfaceDiscoverer networkInterfaceDiscoverer,
         SecurityGroupDiscoverer securityGroupDiscoverer,
         NetworkAclDiscoverer networkAclDiscoverer)
     {
@@ -48,6 +50,7 @@ public sealed class AwsNetworkingDiscoveryService
         _natGatewayDiscoverer = natGatewayDiscoverer;
         _vpcEndpointDiscoverer = vpcEndpointDiscoverer;
         _elasticIpDiscoverer = elasticIpDiscoverer;
+        _networkInterfaceDiscoverer = networkInterfaceDiscoverer;
         _securityGroupDiscoverer = securityGroupDiscoverer;
         _networkAclDiscoverer = networkAclDiscoverer;
     }
@@ -221,7 +224,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var networkInterfacesTask =
-                GetAllNetworkInterfacesAsync(
+                _networkInterfaceDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -294,131 +297,6 @@ public sealed class AwsNetworkingDiscoveryService
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
                     Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsNetworkInterfaceInfo>>
-        GetAllNetworkInterfacesAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsNetworkInterfaceInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeNetworkInterfacesAsync(
-                new DescribeNetworkInterfacesRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var networkInterface in
-                     response.NetworkInterfaces ?? [])
-            {
-                var tags = ToTagDictionary(networkInterface.TagSet);
-
-                results.Add(new AwsNetworkInterfaceInfo
-                {
-                    NetworkInterfaceId =
-                        networkInterface.NetworkInterfaceId ?? "",
-                    Name = GetName(tags),
-                    Description = networkInterface.Description ?? "",
-                    InterfaceType =
-                        networkInterface.InterfaceType?.Value ?? "",
-                    Status = networkInterface.Status?.Value ?? "",
-                    VpcId = networkInterface.VpcId ?? "",
-                    SubnetId = networkInterface.SubnetId ?? "",
-                    AvailabilityZone =
-                        networkInterface.AvailabilityZone ?? "",
-                    OwnerId = networkInterface.OwnerId ?? "",
-                    RequesterId = networkInterface.RequesterId ?? "",
-                    RequesterManaged =
-                        networkInterface.RequesterManaged ?? false,
-                    SourceDestinationCheck =
-                        networkInterface.SourceDestCheck ?? false,
-                    MacAddress = networkInterface.MacAddress ?? "",
-                    PrivateIpAddress =
-                        networkInterface.PrivateIpAddress ?? "",
-                    PrivateDnsName =
-                        networkInterface.PrivateDnsName ?? "",
-                    Region = region,
-                    SecurityGroupIds =
-                        (networkInterface.Groups ?? [])
-                            .Select(group => group.GroupId ?? "")
-                            .Where(id =>
-                                !string.IsNullOrWhiteSpace(id))
-                            .ToList(),
-                    Ipv6Addresses =
-                        (networkInterface.Ipv6Addresses ?? [])
-                            .Select(address =>
-                                address.Ipv6Address ?? "")
-                            .Where(address =>
-                                !string.IsNullOrWhiteSpace(address))
-                            .ToList(),
-                    PrivateIpAddresses =
-                        (networkInterface.PrivateIpAddresses ?? [])
-                            .Select(privateIp =>
-                                new AwsNetworkInterfacePrivateIpInfo
-                                {
-                                    PrivateIpAddress =
-                                        privateIp.PrivateIpAddress ?? "",
-                                    IsPrimary =
-                                        privateIp.Primary ?? false,
-                                    PrivateDnsName =
-                                        privateIp.PrivateDnsName ?? "",
-                                    PublicIp =
-                                        privateIp.Association?
-                                            .PublicIp ?? "",
-                                    PublicDnsName =
-                                        privateIp.Association?
-                                            .PublicDnsName ?? "",
-                                    AllocationId =
-                                        privateIp.Association?
-                                            .AllocationId ?? "",
-                                    AssociationId =
-                                        privateIp.Association?
-                                            .AssociationId ?? ""
-                                })
-                            .ToList(),
-                    Attachment = networkInterface.Attachment is null
-                        ? null
-                        : new AwsNetworkInterfaceAttachmentInfo
-                        {
-                            AttachmentId =
-                                networkInterface.Attachment
-                                    .AttachmentId ?? "",
-                            InstanceId =
-                                networkInterface.Attachment
-                                    .InstanceId ?? "",
-                            InstanceOwnerId =
-                                networkInterface.Attachment
-                                    .InstanceOwnerId ?? "",
-                            DeviceIndex =
-                                networkInterface.Attachment
-                                    .DeviceIndex ?? 0,
-                            NetworkCardIndex =
-                                networkInterface.Attachment
-                                    .NetworkCardIndex ?? 0,
-                            Status =
-                                networkInterface.Attachment
-                                    .Status?.Value ?? "",
-                            DeleteOnTermination =
-                                networkInterface.Attachment
-                                    .DeleteOnTermination ?? false,
-                            AttachTime =
-                                networkInterface.Attachment.AttachTime
-                        },
                     Tags = tags
                 });
             }
