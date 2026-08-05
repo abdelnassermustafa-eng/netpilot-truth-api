@@ -69,6 +69,11 @@ public sealed class AwsAutoScalingGroupInfo
     public IReadOnlyList<string> SuspendedProcesses { get; init; } =
         Array.Empty<string>();
 
+    public IReadOnlyList<AwsAutoScalingEnabledMetricInfo>
+        EnabledMetrics
+    { get; init; } =
+        Array.Empty<AwsAutoScalingEnabledMetricInfo>();
+
     public IReadOnlyList<AwsAutoScalingInstanceInfo> Instances
     { get; init; } =
         Array.Empty<AwsAutoScalingInstanceInfo>();

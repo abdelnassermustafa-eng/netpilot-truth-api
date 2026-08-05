@@ -113,6 +113,18 @@ public sealed class AutoScalingGroupDiscoverer
                             .Where(value =>
                                 !string.IsNullOrWhiteSpace(value))
                             .ToList(),
+                    EnabledMetrics =
+                        (group.EnabledMetrics ?? [])
+                            .Select(metric =>
+                                new AwsAutoScalingEnabledMetricInfo
+                                {
+                                    Metric = metric.Metric ?? "",
+                                    Granularity =
+                                        metric.Granularity ?? ""
+                                })
+                            .OrderBy(metric => metric.Metric)
+                            .ThenBy(metric => metric.Granularity)
+                            .ToList(),
                     Instances =
                         (group.Instances ?? [])
                             .Select(ToInstanceInfo)
