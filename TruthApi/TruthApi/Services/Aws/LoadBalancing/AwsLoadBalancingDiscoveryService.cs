@@ -10,22 +10,28 @@ public sealed class AwsLoadBalancingDiscoveryService
 {
     private readonly AwsClientFactory _clientFactory;
     private readonly LoadBalancerDiscoverer _loadBalancerDiscoverer;
+    private readonly LoadBalancerAttributeDiscoverer _loadBalancerAttributeDiscoverer;
     private readonly ListenerDiscoverer _listenerDiscoverer;
     private readonly ListenerRuleDiscoverer _listenerRuleDiscoverer;
     private readonly TargetGroupDiscoverer _targetGroupDiscoverer;
+    private readonly TargetHealthDiscoverer _targetHealthDiscoverer;
 
     public AwsLoadBalancingDiscoveryService(
         AwsClientFactory clientFactory,
         LoadBalancerDiscoverer loadBalancerDiscoverer,
+        LoadBalancerAttributeDiscoverer loadBalancerAttributeDiscoverer,
         ListenerDiscoverer listenerDiscoverer,
         ListenerRuleDiscoverer listenerRuleDiscoverer,
-        TargetGroupDiscoverer targetGroupDiscoverer)
+        TargetGroupDiscoverer targetGroupDiscoverer,
+        TargetHealthDiscoverer targetHealthDiscoverer)
     {
         _clientFactory = clientFactory;
         _loadBalancerDiscoverer = loadBalancerDiscoverer;
+        _loadBalancerAttributeDiscoverer = loadBalancerAttributeDiscoverer;
         _listenerDiscoverer = listenerDiscoverer;
         _listenerRuleDiscoverer = listenerRuleDiscoverer;
         _targetGroupDiscoverer = targetGroupDiscoverer;
+        _targetHealthDiscoverer = targetHealthDiscoverer;
     }
 
     public async Task<AwsLoadBalancingInventory> DiscoverAsync(
@@ -74,6 +80,19 @@ public sealed class AwsLoadBalancingDiscoveryService
                 .ThenBy(group => group.Name)
                 .ThenBy(group => group.TargetGroupArn)
                 .ToList(),
+            TargetHealth = regionalResults
+                .SelectMany(result => result.TargetHealth)
+                .OrderBy(item => item.Region)
+                .ThenBy(item => item.TargetGroupArn)
+                .ThenBy(item => item.TargetId)
+                .ThenBy(item => item.Port)
+                .ToList(),
+            LoadBalancerAttributes = regionalResults
+                .SelectMany(result => result.LoadBalancerAttributes)
+                .OrderBy(attribute => attribute.Region)
+                .ThenBy(attribute => attribute.LoadBalancerArn)
+                .ThenBy(attribute => attribute.Key)
+                .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
                 .ToList(),
@@ -118,6 +137,16 @@ public sealed class AwsLoadBalancingDiscoveryService
                     region,
                     cancellationToken);
 
+            var loadBalancerAttributesTask =
+                _loadBalancerAttributeDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    loadBalancers
+                        .Select(loadBalancer =>
+                            loadBalancer.LoadBalancerArn)
+                        .ToList(),
+                    cancellationToken);
+
             var listeners =
                 await _listenerDiscoverer.DiscoverAsync(
                     client,
@@ -137,12 +166,27 @@ public sealed class AwsLoadBalancingDiscoveryService
 
             var targetGroups = await targetGroupsTask;
 
+            var targetHealth =
+                await _targetHealthDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    targetGroups
+                        .Select(group =>
+                            group.TargetGroupArn)
+                        .ToList(),
+                    cancellationToken);
+
+            var loadBalancerAttributes =
+                await loadBalancerAttributesTask;
+
             return new RegionalLoadBalancingResult
             {
                 LoadBalancers = loadBalancers,
+                LoadBalancerAttributes = loadBalancerAttributes,
                 Listeners = listeners,
                 ListenerRules = listenerRules,
-                TargetGroups = targetGroups
+                TargetGroups = targetGroups,
+                TargetHealth = targetHealth
             };
         }
         catch (Exception exception)
@@ -176,6 +220,15 @@ public sealed class AwsLoadBalancingDiscoveryService
         public IReadOnlyList<AwsTargetGroupInfo> TargetGroups
         { get; init; } =
             Array.Empty<AwsTargetGroupInfo>();
+
+        public IReadOnlyList<AwsTargetHealthInfo> TargetHealth
+        { get; init; } =
+            Array.Empty<AwsTargetHealthInfo>();
+
+        public IReadOnlyList<AwsLoadBalancerAttributeInfo>
+            LoadBalancerAttributes
+        { get; init; } =
+            Array.Empty<AwsLoadBalancerAttributeInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();

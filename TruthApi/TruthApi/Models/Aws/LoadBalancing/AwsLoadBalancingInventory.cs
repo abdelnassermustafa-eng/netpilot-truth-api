@@ -20,6 +20,15 @@ public sealed class AwsLoadBalancingInventory
     { get; init; } =
         Array.Empty<AwsTargetGroupInfo>();
 
+    public IReadOnlyList<AwsTargetHealthInfo> TargetHealth
+    { get; init; } =
+        Array.Empty<AwsTargetHealthInfo>();
+
+    public IReadOnlyList<AwsLoadBalancerAttributeInfo>
+        LoadBalancerAttributes
+    { get; init; } =
+        Array.Empty<AwsLoadBalancerAttributeInfo>();
+
     public DateTimeOffset DiscoveredAt
     { get; init; } =
         DateTimeOffset.UtcNow;
