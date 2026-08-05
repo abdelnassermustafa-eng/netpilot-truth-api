@@ -22,6 +22,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
     private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
     private readonly VpcEndpointDiscoverer _vpcEndpointDiscoverer;
+    private readonly ElasticIpDiscoverer _elasticIpDiscoverer;
     private readonly SecurityGroupDiscoverer _securityGroupDiscoverer;
     private readonly NetworkAclDiscoverer _networkAclDiscoverer;
 
@@ -34,6 +35,7 @@ public sealed class AwsNetworkingDiscoveryService
         InternetGatewayDiscoverer internetGatewayDiscoverer,
         NatGatewayDiscoverer natGatewayDiscoverer,
         VpcEndpointDiscoverer vpcEndpointDiscoverer,
+        ElasticIpDiscoverer elasticIpDiscoverer,
         SecurityGroupDiscoverer securityGroupDiscoverer,
         NetworkAclDiscoverer networkAclDiscoverer)
     {
@@ -45,6 +47,7 @@ public sealed class AwsNetworkingDiscoveryService
         _internetGatewayDiscoverer = internetGatewayDiscoverer;
         _natGatewayDiscoverer = natGatewayDiscoverer;
         _vpcEndpointDiscoverer = vpcEndpointDiscoverer;
+        _elasticIpDiscoverer = elasticIpDiscoverer;
         _securityGroupDiscoverer = securityGroupDiscoverer;
         _networkAclDiscoverer = networkAclDiscoverer;
     }
@@ -212,7 +215,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var elasticIpsTask =
-                GetAllElasticIpsAsync(
+                _elasticIpDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -300,50 +303,6 @@ public sealed class AwsNetworkingDiscoveryService
         while (!string.IsNullOrWhiteSpace(nextToken));
 
         return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsElasticIpInfo>>
-        GetAllElasticIpsAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var response = await client.DescribeAddressesAsync(
-            new DescribeAddressesRequest(),
-            cancellationToken);
-
-        return (response.Addresses ?? [])
-            .Select(address =>
-            {
-                var tags = ToTagDictionary(address.Tags);
-
-                return new AwsElasticIpInfo
-                {
-                    AllocationId = address.AllocationId ?? "",
-                    AssociationId = address.AssociationId ?? "",
-                    PublicIp = address.PublicIp ?? "",
-                    PrivateIpAddress =
-                        address.PrivateIpAddress ?? "",
-                    NetworkInterfaceId =
-                        address.NetworkInterfaceId ?? "",
-                    NetworkInterfaceOwnerId =
-                        address.NetworkInterfaceOwnerId ?? "",
-                    InstanceId = address.InstanceId ?? "",
-                    Domain = address.Domain?.Value ?? "",
-                    NetworkBorderGroup =
-                        address.NetworkBorderGroup ?? "",
-                    PublicIpv4Pool =
-                        address.PublicIpv4Pool ?? "",
-                    CustomerOwnedIp =
-                        address.CustomerOwnedIp ?? "",
-                    CustomerOwnedIpv4Pool =
-                        address.CustomerOwnedIpv4Pool ?? "",
-                    Name = GetName(tags),
-                    Region = region,
-                    Tags = tags
-                };
-            })
-            .ToList();
     }
 
     private static async Task<IReadOnlyList<AwsNetworkInterfaceInfo>>
