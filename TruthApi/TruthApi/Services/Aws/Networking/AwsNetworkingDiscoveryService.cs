@@ -4,7 +4,7 @@ using TruthApi.Services.Aws.Networking.Discoverers.Core;
 using TruthApi.Services.Aws.Networking.Discoverers.Security;
 using TruthApi.Services.Aws.Networking.Discoverers.Connectivity;
 
-namespace TruthApi.Services.Aws;
+namespace TruthApi.Services.Aws.Networking;
 
 /// <summary>
 /// Discovers live AWS networking resources across one or more Regions.
@@ -266,74 +266,6 @@ public sealed class AwsNetworkingDiscoveryService
                 ]
             };
         }
-    }
-
-    private static async Task<IReadOnlyList<AwsVpcInfo>> GetAllVpcsAsync(
-        Amazon.EC2.IAmazonEC2 client,
-        string region,
-        CancellationToken cancellationToken)
-    {
-        var results = new List<AwsVpcInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeVpcsAsync(
-                new DescribeVpcsRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var vpc in response.Vpcs ?? [])
-            {
-                var tags = ToTagDictionary(vpc.Tags);
-
-                results.Add(new AwsVpcInfo
-                {
-                    VpcId = vpc.VpcId ?? "",
-                    Name = GetName(tags),
-                    CidrBlock = vpc.CidrBlock ?? "",
-                    State = vpc.State?.Value ?? "",
-                    IsDefault = vpc.IsDefault ?? false,
-                    Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static IReadOnlyDictionary<string, string> ToTagDictionary(
-        List<Tag>? tags)
-    {
-        if (tags is null || tags.Count == 0)
-        {
-            return new Dictionary<string, string>(
-                StringComparer.OrdinalIgnoreCase);
-        }
-
-        return tags
-            .Where(tag => !string.IsNullOrWhiteSpace(tag.Key))
-            .GroupBy(
-                tag => tag.Key,
-                StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value ?? "",
-                StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string GetName(
-        IReadOnlyDictionary<string, string> tags)
-    {
-        return tags.TryGetValue("Name", out var name)
-            ? name
-            : "";
     }
 
     private sealed class RegionalNetworkingResult

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TruthApi.Models;
 using TruthApi.Models.Aws.Networking;
-using TruthApi.Services.Aws;
+using TruthApi.Services.Aws.Networking;
 
 namespace TruthApi.Controllers;
 
