@@ -8,6 +8,8 @@ using TruthApi.Services.Aws.Compute;
 using TruthApi.Services.Aws.Compute.Discoverers.Core;
 using TruthApi.Services.Aws.Compute.Discoverers.Scaling;
 using TruthApi.Services.Aws.Networking;
+using TruthApi.Services.Aws.LoadBalancing;
+using TruthApi.Services.Aws.LoadBalancing.Discoverers;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
 using TruthApi.Services.Aws.Networking.Discoverers.Security;
 using TruthApi.Services.Aws.Networking.Discoverers.Connectivity;
@@ -106,6 +108,10 @@ builder.Services.AddSingleton<AutoScalingLifecycleHookDiscoverer>();
 builder.Services.AddSingleton<AutoScalingWarmPoolDiscoverer>();
 builder.Services.AddSingleton<AutoScalingInstanceRefreshDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
+
+// TruthDoctor Version 2 — ELBv2 discovery
+builder.Services.AddSingleton<LoadBalancerDiscoverer>();
+builder.Services.AddSingleton<AwsLoadBalancingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
 builder.Services.AddSingleton<NetworkValidationService>();

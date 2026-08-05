@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Amazon;
 using Amazon.AutoScaling;
 using Amazon.EC2;
+using Amazon.ElasticLoadBalancingV2;
 using Amazon.SecurityToken;
 using Microsoft.Extensions.Options;
 using TruthApi.Models;
@@ -21,6 +22,11 @@ public sealed class AwsClientFactory : IDisposable
 
     private readonly ConcurrentDictionary<string, IAmazonAutoScaling>
         _autoScalingClients =
+            new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly ConcurrentDictionary<
+        string,
+        IAmazonElasticLoadBalancingV2> _elbv2Clients =
             new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Lazy<IAmazonSecurityTokenService> _stsClient;
@@ -82,6 +88,24 @@ public sealed class AwsClientFactory : IDisposable
             });
     }
 
+    public IAmazonElasticLoadBalancingV2 GetElbv2Client(
+        string? regionName = null)
+    {
+        var effectiveRegion = string.IsNullOrWhiteSpace(regionName)
+            ? DefaultRegion
+            : regionName.Trim();
+
+        return _elbv2Clients.GetOrAdd(
+            effectiveRegion,
+            static name =>
+            {
+                var endpoint = RegionEndpoint.GetBySystemName(name);
+
+                return new AmazonElasticLoadBalancingV2Client(
+                    endpoint);
+            });
+    }
+
     public void Dispose()
     {
         foreach (var client in _ec2Clients.Values)
@@ -97,6 +121,13 @@ public sealed class AwsClientFactory : IDisposable
         }
 
         _autoScalingClients.Clear();
+
+        foreach (var client in _elbv2Clients.Values)
+        {
+            client.Dispose();
+        }
+
+        _elbv2Clients.Clear();
 
         if (_stsClient.IsValueCreated)
         {
