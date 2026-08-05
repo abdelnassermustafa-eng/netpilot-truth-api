@@ -1,6 +1,7 @@
 using Amazon.EC2.Model;
 using TruthApi.Models.Aws.Networking;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
+using TruthApi.Services.Aws.Networking.Discoverers.Security;
 using TruthApi.Services.Aws.Networking.Discoverers.Connectivity;
 
 namespace TruthApi.Services.Aws;
@@ -20,6 +21,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly RouteTableDiscoverer _routeTableDiscoverer;
     private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
     private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
+    private readonly SecurityGroupDiscoverer _securityGroupDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
@@ -28,7 +30,8 @@ public sealed class AwsNetworkingDiscoveryService
         SubnetDiscoverer subnetDiscoverer,
         RouteTableDiscoverer routeTableDiscoverer,
         InternetGatewayDiscoverer internetGatewayDiscoverer,
-        NatGatewayDiscoverer natGatewayDiscoverer)
+        NatGatewayDiscoverer natGatewayDiscoverer,
+        SecurityGroupDiscoverer securityGroupDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -37,6 +40,7 @@ public sealed class AwsNetworkingDiscoveryService
         _routeTableDiscoverer = routeTableDiscoverer;
         _internetGatewayDiscoverer = internetGatewayDiscoverer;
         _natGatewayDiscoverer = natGatewayDiscoverer;
+        _securityGroupDiscoverer = securityGroupDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -184,7 +188,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var securityGroupsTask =
-                GetAllSecurityGroupsAsync(
+                _securityGroupDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -290,105 +294,6 @@ public sealed class AwsNetworkingDiscoveryService
         while (!string.IsNullOrWhiteSpace(nextToken));
 
         return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsSecurityGroupInfo>>
-        GetAllSecurityGroupsAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsSecurityGroupInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeSecurityGroupsAsync(
-                new DescribeSecurityGroupsRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var group in response.SecurityGroups ?? [])
-            {
-                var tags = ToTagDictionary(group.Tags);
-
-                results.Add(new AwsSecurityGroupInfo
-                {
-                    GroupId = group.GroupId ?? "",
-                    GroupName = group.GroupName ?? "",
-                    Name = GetName(tags),
-                    Description = group.Description ?? "",
-                    VpcId = group.VpcId ?? "",
-                    OwnerId = group.OwnerId ?? "",
-                    Region = region,
-                    IngressRules = (group.IpPermissions ?? [])
-                        .Select(ToSecurityGroupRuleInfo)
-                        .ToList(),
-                    EgressRules = (group.IpPermissionsEgress ?? [])
-                        .Select(ToSecurityGroupRuleInfo)
-                        .ToList(),
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static AwsSecurityGroupRuleInfo ToSecurityGroupRuleInfo(
-        IpPermission permission)
-    {
-        var descriptions = new List<string>();
-
-        descriptions.AddRange(
-            (permission.Ipv4Ranges ?? [])
-                .Select(range => range.Description)
-                .Where(description =>
-                    !string.IsNullOrWhiteSpace(description))!);
-
-        descriptions.AddRange(
-            (permission.Ipv6Ranges ?? [])
-                .Select(range => range.Description)
-                .Where(description =>
-                    !string.IsNullOrWhiteSpace(description))!);
-
-        descriptions.AddRange(
-            (permission.UserIdGroupPairs ?? [])
-                .Select(pair => pair.Description)
-                .Where(description =>
-                    !string.IsNullOrWhiteSpace(description))!);
-
-        return new AwsSecurityGroupRuleInfo
-        {
-            Protocol = permission.IpProtocol ?? "",
-            FromPort = permission.FromPort,
-            ToPort = permission.ToPort,
-            Ipv4Ranges = (permission.Ipv4Ranges ?? [])
-                .Select(range => range.CidrIp ?? "")
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToList(),
-            Ipv6Ranges = (permission.Ipv6Ranges ?? [])
-                .Select(range => range.CidrIpv6 ?? "")
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToList(),
-            PrefixListIds = (permission.PrefixListIds ?? [])
-                .Select(prefix => prefix.Id ?? "")
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToList(),
-            ReferencedSecurityGroupIds =
-                (permission.UserIdGroupPairs ?? [])
-                    .Select(pair => pair.GroupId ?? "")
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .ToList(),
-            Description = string.Join(
-                "; ",
-                descriptions.Distinct())
-        };
     }
 
     private static async Task<IReadOnlyList<AwsNetworkAclInfo>>
