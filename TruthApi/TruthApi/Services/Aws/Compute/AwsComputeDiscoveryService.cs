@@ -14,6 +14,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly EbsVolumeDiscoverer _volumeDiscoverer;
     private readonly EbsSnapshotDiscoverer _snapshotDiscoverer;
     private readonly AmiDiscoverer _amiDiscoverer;
+    private readonly Ec2KeyPairDiscoverer _keyPairDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -21,7 +22,8 @@ public sealed class AwsComputeDiscoveryService
         Ec2InstanceDiscoverer instanceDiscoverer,
         EbsVolumeDiscoverer volumeDiscoverer,
         EbsSnapshotDiscoverer snapshotDiscoverer,
-        AmiDiscoverer amiDiscoverer)
+        AmiDiscoverer amiDiscoverer,
+        Ec2KeyPairDiscoverer keyPairDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -29,6 +31,7 @@ public sealed class AwsComputeDiscoveryService
         _volumeDiscoverer = volumeDiscoverer;
         _snapshotDiscoverer = snapshotDiscoverer;
         _amiDiscoverer = amiDiscoverer;
+        _keyPairDiscoverer = keyPairDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -74,6 +77,12 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(image => image.Region)
                 .ThenBy(image => image.Name)
                 .ThenBy(image => image.ImageId)
+                .ToList(),
+            KeyPairs = regionalResults
+                .SelectMany(result => result.KeyPairs)
+                .OrderBy(keyPair => keyPair.Region)
+                .ThenBy(keyPair => keyPair.KeyName)
+                .ThenBy(keyPair => keyPair.KeyPairId)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -132,18 +141,26 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var keyPairsTask =
+                _keyPairDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
                 snapshotsTask,
-                imagesTask);
+                imagesTask,
+                keyPairsTask);
 
             return new RegionalComputeResult
             {
                 Instances = await instancesTask,
                 Volumes = await volumesTask,
                 Snapshots = await snapshotsTask,
-                Images = await imagesTask
+                Images = await imagesTask,
+                KeyPairs = await keyPairsTask
             };
         }
         catch (Exception exception)
@@ -172,6 +189,10 @@ public sealed class AwsComputeDiscoveryService
 
         public IReadOnlyList<AwsAmiInfo> Images { get; init; } =
             Array.Empty<AwsAmiInfo>();
+
+        public IReadOnlyList<AwsEc2KeyPairInfo> KeyPairs
+        { get; init; } =
+            Array.Empty<AwsEc2KeyPairInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();

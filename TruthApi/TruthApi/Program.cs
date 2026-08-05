@@ -94,6 +94,7 @@ builder.Services.AddSingleton<Ec2InstanceDiscoverer>();
 builder.Services.AddSingleton<EbsVolumeDiscoverer>();
 builder.Services.AddSingleton<EbsSnapshotDiscoverer>();
 builder.Services.AddSingleton<AmiDiscoverer>();
+builder.Services.AddSingleton<Ec2KeyPairDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

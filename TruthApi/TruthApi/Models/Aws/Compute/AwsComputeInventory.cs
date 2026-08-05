@@ -23,6 +23,9 @@ public sealed class AwsComputeInventory
     public IReadOnlyList<AwsAmiInfo> Images { get; init; } =
         Array.Empty<AwsAmiInfo>();
 
+    public IReadOnlyList<AwsEc2KeyPairInfo> KeyPairs { get; init; } =
+        Array.Empty<AwsEc2KeyPairInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 
