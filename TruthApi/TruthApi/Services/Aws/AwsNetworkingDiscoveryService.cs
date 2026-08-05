@@ -22,6 +22,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
     private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
     private readonly SecurityGroupDiscoverer _securityGroupDiscoverer;
+    private readonly NetworkAclDiscoverer _networkAclDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
@@ -31,7 +32,8 @@ public sealed class AwsNetworkingDiscoveryService
         RouteTableDiscoverer routeTableDiscoverer,
         InternetGatewayDiscoverer internetGatewayDiscoverer,
         NatGatewayDiscoverer natGatewayDiscoverer,
-        SecurityGroupDiscoverer securityGroupDiscoverer)
+        SecurityGroupDiscoverer securityGroupDiscoverer,
+        NetworkAclDiscoverer networkAclDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -41,6 +43,7 @@ public sealed class AwsNetworkingDiscoveryService
         _internetGatewayDiscoverer = internetGatewayDiscoverer;
         _natGatewayDiscoverer = natGatewayDiscoverer;
         _securityGroupDiscoverer = securityGroupDiscoverer;
+        _networkAclDiscoverer = networkAclDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -194,7 +197,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var networkAclsTask =
-                GetAllNetworkAclsAsync(
+                _networkAclDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -294,87 +297,6 @@ public sealed class AwsNetworkingDiscoveryService
         while (!string.IsNullOrWhiteSpace(nextToken));
 
         return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsNetworkAclInfo>>
-        GetAllNetworkAclsAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsNetworkAclInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeNetworkAclsAsync(
-                new DescribeNetworkAclsRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var acl in response.NetworkAcls ?? [])
-            {
-                var tags = ToTagDictionary(acl.Tags);
-
-                results.Add(new AwsNetworkAclInfo
-                {
-                    NetworkAclId = acl.NetworkAclId ?? "",
-                    Name = GetName(tags),
-                    VpcId = acl.VpcId ?? "",
-                    OwnerId = acl.OwnerId ?? "",
-                    IsDefault = acl.IsDefault ?? false,
-                    Region = region,
-                    Associations = (acl.Associations ?? [])
-                        .Select(ToNetworkAclAssociationInfo)
-                        .OrderBy(association => association.SubnetId)
-                        .ToList(),
-                    Entries = (acl.Entries ?? [])
-                        .Select(ToNetworkAclEntryInfo)
-                        .OrderBy(entry => entry.IsEgress)
-                        .ThenBy(entry => entry.RuleNumber)
-                        .ToList(),
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static AwsNetworkAclAssociationInfo
-        ToNetworkAclAssociationInfo(
-            NetworkAclAssociation association)
-    {
-        return new AwsNetworkAclAssociationInfo
-        {
-            AssociationId =
-                association.NetworkAclAssociationId ?? "",
-            NetworkAclId = association.NetworkAclId ?? "",
-            SubnetId = association.SubnetId ?? ""
-        };
-    }
-
-    private static AwsNetworkAclEntryInfo ToNetworkAclEntryInfo(
-        NetworkAclEntry entry)
-    {
-        return new AwsNetworkAclEntryInfo
-        {
-            RuleNumber = entry.RuleNumber ?? 0,
-            IsEgress = entry.Egress ?? false,
-            Protocol = entry.Protocol ?? "",
-            RuleAction = entry.RuleAction?.Value ?? "",
-            CidrBlock = entry.CidrBlock ?? "",
-            Ipv6CidrBlock = entry.Ipv6CidrBlock ?? "",
-            FromPort = entry.PortRange?.From,
-            ToPort = entry.PortRange?.To,
-            IcmpType = entry.IcmpTypeCode?.Type,
-            IcmpCode = entry.IcmpTypeCode?.Code
-        };
     }
 
     private static async Task<IReadOnlyList<AwsVpcEndpointInfo>>
