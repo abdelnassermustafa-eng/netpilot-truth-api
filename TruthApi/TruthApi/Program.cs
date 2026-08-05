@@ -102,6 +102,7 @@ builder.Services.AddSingleton<LaunchConfigurationDiscoverer>();
 builder.Services.AddSingleton<AutoScalingPolicyDiscoverer>();
 builder.Services.AddSingleton<AutoScalingScheduledActionDiscoverer>();
 builder.Services.AddSingleton<AutoScalingActivityDiscoverer>();
+builder.Services.AddSingleton<AutoScalingLifecycleHookDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

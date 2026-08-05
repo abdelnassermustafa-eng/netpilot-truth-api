@@ -22,6 +22,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly AutoScalingPolicyDiscoverer _autoScalingPolicyDiscoverer;
     private readonly AutoScalingScheduledActionDiscoverer _scheduledActionDiscoverer;
     private readonly AutoScalingActivityDiscoverer _autoScalingActivityDiscoverer;
+    private readonly AutoScalingLifecycleHookDiscoverer _lifecycleHookDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -36,7 +37,8 @@ public sealed class AwsComputeDiscoveryService
         LaunchConfigurationDiscoverer launchConfigurationDiscoverer,
         AutoScalingPolicyDiscoverer autoScalingPolicyDiscoverer,
         AutoScalingScheduledActionDiscoverer scheduledActionDiscoverer,
-        AutoScalingActivityDiscoverer autoScalingActivityDiscoverer)
+        AutoScalingActivityDiscoverer autoScalingActivityDiscoverer,
+        AutoScalingLifecycleHookDiscoverer lifecycleHookDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -51,6 +53,7 @@ public sealed class AwsComputeDiscoveryService
         _autoScalingPolicyDiscoverer = autoScalingPolicyDiscoverer;
         _scheduledActionDiscoverer = scheduledActionDiscoverer;
         _autoScalingActivityDiscoverer = autoScalingActivityDiscoverer;
+        _lifecycleHookDiscoverer = lifecycleHookDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -137,6 +140,12 @@ public sealed class AwsComputeDiscoveryService
                 .ThenBy(activity => activity.Region)
                 .ThenBy(activity => activity.AutoScalingGroupName)
                 .ThenBy(activity => activity.ActivityId)
+                .ToList(),
+            LifecycleHooks = regionalResults
+                .SelectMany(result => result.LifecycleHooks)
+                .OrderBy(hook => hook.Region)
+                .ThenBy(hook => hook.AutoScalingGroupName)
+                .ThenBy(hook => hook.LifecycleHookName)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -251,6 +260,21 @@ public sealed class AwsComputeDiscoveryService
                 scheduledActionsTask,
                 autoScalingActivitiesTask);
 
+            var autoScalingGroups =
+                await autoScalingGroupsTask;
+
+            var lifecycleHooksTask =
+                _lifecycleHookDiscoverer.DiscoverAsync(
+                    autoScalingClient,
+                    region,
+                    autoScalingGroups
+                        .Select(group =>
+                            group.AutoScalingGroupName)
+                        .ToList(),
+                    cancellationToken);
+
+            await lifecycleHooksTask;
+
             return new RegionalComputeResult
             {
                 Instances = await instancesTask,
@@ -259,11 +283,12 @@ public sealed class AwsComputeDiscoveryService
                 Images = await imagesTask,
                 KeyPairs = await keyPairsTask,
                 LaunchTemplates = await launchTemplatesTask,
-                AutoScalingGroups = await autoScalingGroupsTask,
+                AutoScalingGroups = autoScalingGroups,
                 LaunchConfigurations = await launchConfigurationsTask,
                 AutoScalingPolicies = await autoScalingPoliciesTask,
                 ScheduledActions = await scheduledActionsTask,
-                AutoScalingActivities = await autoScalingActivitiesTask
+                AutoScalingActivities = await autoScalingActivitiesTask,
+                LifecycleHooks = await lifecycleHooksTask
             };
         }
         catch (Exception exception)
@@ -324,6 +349,11 @@ public sealed class AwsComputeDiscoveryService
             AutoScalingActivities
         { get; init; } =
             Array.Empty<AwsAutoScalingActivityInfo>();
+
+        public IReadOnlyList<AwsAutoScalingLifecycleHookInfo>
+            LifecycleHooks
+        { get; init; } =
+            Array.Empty<AwsAutoScalingLifecycleHookInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
