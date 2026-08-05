@@ -4,6 +4,8 @@ using System.Text;
 using TruthApi.Models;
 using TruthApi.Services;
 using TruthApi.Services.Aws;
+using TruthApi.Services.Aws.Compute;
+using TruthApi.Services.Aws.Compute.Discoverers.Core;
 using TruthApi.Services.Aws.Networking;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
 using TruthApi.Services.Aws.Networking.Discoverers.Security;
@@ -86,6 +88,10 @@ builder.Services.AddSingleton<NetworkInterfaceDiscoverer>();
 builder.Services.AddSingleton<SecurityGroupDiscoverer>();
 builder.Services.AddSingleton<NetworkAclDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
+
+// TruthDoctor Version 2 — AWS compute discovery
+builder.Services.AddSingleton<Ec2InstanceDiscoverer>();
+builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
 builder.Services.AddSingleton<NetworkValidationService>();
