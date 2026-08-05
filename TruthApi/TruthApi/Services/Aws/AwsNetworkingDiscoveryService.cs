@@ -21,6 +21,7 @@ public sealed class AwsNetworkingDiscoveryService
     private readonly RouteTableDiscoverer _routeTableDiscoverer;
     private readonly InternetGatewayDiscoverer _internetGatewayDiscoverer;
     private readonly NatGatewayDiscoverer _natGatewayDiscoverer;
+    private readonly VpcEndpointDiscoverer _vpcEndpointDiscoverer;
     private readonly SecurityGroupDiscoverer _securityGroupDiscoverer;
     private readonly NetworkAclDiscoverer _networkAclDiscoverer;
 
@@ -32,6 +33,7 @@ public sealed class AwsNetworkingDiscoveryService
         RouteTableDiscoverer routeTableDiscoverer,
         InternetGatewayDiscoverer internetGatewayDiscoverer,
         NatGatewayDiscoverer natGatewayDiscoverer,
+        VpcEndpointDiscoverer vpcEndpointDiscoverer,
         SecurityGroupDiscoverer securityGroupDiscoverer,
         NetworkAclDiscoverer networkAclDiscoverer)
     {
@@ -42,6 +44,7 @@ public sealed class AwsNetworkingDiscoveryService
         _routeTableDiscoverer = routeTableDiscoverer;
         _internetGatewayDiscoverer = internetGatewayDiscoverer;
         _natGatewayDiscoverer = natGatewayDiscoverer;
+        _vpcEndpointDiscoverer = vpcEndpointDiscoverer;
         _securityGroupDiscoverer = securityGroupDiscoverer;
         _networkAclDiscoverer = networkAclDiscoverer;
     }
@@ -203,7 +206,7 @@ public sealed class AwsNetworkingDiscoveryService
                     cancellationToken);
 
             var vpcEndpointsTask =
-                GetAllVpcEndpointsAsync(
+                _vpcEndpointDiscoverer.DiscoverAsync(
                     client,
                     region,
                     cancellationToken);
@@ -288,82 +291,6 @@ public sealed class AwsNetworkingDiscoveryService
                     State = vpc.State?.Value ?? "",
                     IsDefault = vpc.IsDefault ?? false,
                     Region = region,
-                    Tags = tags
-                });
-            }
-
-            nextToken = response.NextToken;
-        }
-        while (!string.IsNullOrWhiteSpace(nextToken));
-
-        return results;
-    }
-
-    private static async Task<IReadOnlyList<AwsVpcEndpointInfo>>
-        GetAllVpcEndpointsAsync(
-            Amazon.EC2.IAmazonEC2 client,
-            string region,
-            CancellationToken cancellationToken)
-    {
-        var results = new List<AwsVpcEndpointInfo>();
-        string? nextToken = null;
-
-        do
-        {
-            var response = await client.DescribeVpcEndpointsAsync(
-                new DescribeVpcEndpointsRequest
-                {
-                    NextToken = nextToken
-                },
-                cancellationToken);
-
-            foreach (var endpoint in response.VpcEndpoints ?? [])
-            {
-                var tags = ToTagDictionary(endpoint.Tags);
-
-                results.Add(new AwsVpcEndpointInfo
-                {
-                    VpcEndpointId = endpoint.VpcEndpointId ?? "",
-                    Name = GetName(tags),
-                    VpcId = endpoint.VpcId ?? "",
-                    ServiceName = endpoint.ServiceName ?? "",
-                    EndpointType =
-                        endpoint.VpcEndpointType?.Value ?? "",
-                    State = endpoint.State?.Value ?? "",
-                    OwnerId = endpoint.OwnerId ?? "",
-                    PrivateDnsEnabled =
-                        endpoint.PrivateDnsEnabled ?? false,
-                    CreatedAt = endpoint.CreationTimestamp,
-                    PolicyDocument = endpoint.PolicyDocument ?? "",
-                    Region = region,
-                    RouteTableIds = (endpoint.RouteTableIds ?? [])
-                        .Where(id => !string.IsNullOrWhiteSpace(id))
-                        .ToList(),
-                    SubnetIds = (endpoint.SubnetIds ?? [])
-                        .Where(id => !string.IsNullOrWhiteSpace(id))
-                        .ToList(),
-                    NetworkInterfaceIds =
-                        (endpoint.NetworkInterfaceIds ?? [])
-                            .Where(id =>
-                                !string.IsNullOrWhiteSpace(id))
-                            .ToList(),
-                    SecurityGroups = (endpoint.Groups ?? [])
-                        .Select(group =>
-                            new AwsVpcEndpointSecurityGroupInfo
-                            {
-                                GroupId = group.GroupId ?? "",
-                                GroupName = group.GroupName ?? ""
-                            })
-                        .ToList(),
-                    DnsEntries = (endpoint.DnsEntries ?? [])
-                        .Select(entry =>
-                            new AwsVpcEndpointDnsEntryInfo
-                            {
-                                DnsName = entry.DnsName ?? "",
-                                HostedZoneId =
-                                    entry.HostedZoneId ?? ""
-                            })
-                        .ToList(),
                     Tags = tags
                 });
             }

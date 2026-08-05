@@ -79,6 +79,7 @@ builder.Services.AddSingleton<SubnetDiscoverer>();
 builder.Services.AddSingleton<RouteTableDiscoverer>();
 builder.Services.AddSingleton<InternetGatewayDiscoverer>();
 builder.Services.AddSingleton<NatGatewayDiscoverer>();
+builder.Services.AddSingleton<VpcEndpointDiscoverer>();
 builder.Services.AddSingleton<SecurityGroupDiscoverer>();
 builder.Services.AddSingleton<NetworkAclDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
