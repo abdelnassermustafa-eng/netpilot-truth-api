@@ -98,6 +98,7 @@ builder.Services.AddSingleton<AmiDiscoverer>();
 builder.Services.AddSingleton<Ec2KeyPairDiscoverer>();
 builder.Services.AddSingleton<LaunchTemplateDiscoverer>();
 builder.Services.AddSingleton<AutoScalingGroupDiscoverer>();
+builder.Services.AddSingleton<LaunchConfigurationDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

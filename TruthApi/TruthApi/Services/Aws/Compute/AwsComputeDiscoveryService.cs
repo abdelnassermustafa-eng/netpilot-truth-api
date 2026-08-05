@@ -18,6 +18,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly Ec2KeyPairDiscoverer _keyPairDiscoverer;
     private readonly LaunchTemplateDiscoverer _launchTemplateDiscoverer;
     private readonly AutoScalingGroupDiscoverer _autoScalingGroupDiscoverer;
+    private readonly LaunchConfigurationDiscoverer _launchConfigurationDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -28,7 +29,8 @@ public sealed class AwsComputeDiscoveryService
         AmiDiscoverer amiDiscoverer,
         Ec2KeyPairDiscoverer keyPairDiscoverer,
         LaunchTemplateDiscoverer launchTemplateDiscoverer,
-        AutoScalingGroupDiscoverer autoScalingGroupDiscoverer)
+        AutoScalingGroupDiscoverer autoScalingGroupDiscoverer,
+        LaunchConfigurationDiscoverer launchConfigurationDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -39,6 +41,7 @@ public sealed class AwsComputeDiscoveryService
         _keyPairDiscoverer = keyPairDiscoverer;
         _launchTemplateDiscoverer = launchTemplateDiscoverer;
         _autoScalingGroupDiscoverer = autoScalingGroupDiscoverer;
+        _launchConfigurationDiscoverer = launchConfigurationDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -101,6 +104,11 @@ public sealed class AwsComputeDiscoveryService
                 .SelectMany(result => result.AutoScalingGroups)
                 .OrderBy(group => group.Region)
                 .ThenBy(group => group.AutoScalingGroupName)
+                .ToList(),
+            LaunchConfigurations = regionalResults
+                .SelectMany(result => result.LaunchConfigurations)
+                .OrderBy(item => item.Region)
+                .ThenBy(item => item.LaunchConfigurationName)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -178,6 +186,12 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var launchConfigurationsTask =
+                _launchConfigurationDiscoverer.DiscoverAsync(
+                    autoScalingClient,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
@@ -185,7 +199,8 @@ public sealed class AwsComputeDiscoveryService
                 imagesTask,
                 keyPairsTask,
                 launchTemplatesTask,
-                autoScalingGroupsTask);
+                autoScalingGroupsTask,
+                launchConfigurationsTask);
 
             return new RegionalComputeResult
             {
@@ -195,7 +210,8 @@ public sealed class AwsComputeDiscoveryService
                 Images = await imagesTask,
                 KeyPairs = await keyPairsTask,
                 LaunchTemplates = await launchTemplatesTask,
-                AutoScalingGroups = await autoScalingGroupsTask
+                AutoScalingGroups = await autoScalingGroupsTask,
+                LaunchConfigurations = await launchConfigurationsTask
             };
         }
         catch (Exception exception)
@@ -236,6 +252,11 @@ public sealed class AwsComputeDiscoveryService
         public IReadOnlyList<AwsAutoScalingGroupInfo> AutoScalingGroups
         { get; init; } =
             Array.Empty<AwsAutoScalingGroupInfo>();
+
+        public IReadOnlyList<AwsLaunchConfigurationInfo>
+            LaunchConfigurations
+        { get; init; } =
+            Array.Empty<AwsLaunchConfigurationInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
