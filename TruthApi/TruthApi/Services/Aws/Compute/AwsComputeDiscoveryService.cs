@@ -13,19 +13,22 @@ public sealed class AwsComputeDiscoveryService
     private readonly Ec2InstanceDiscoverer _instanceDiscoverer;
     private readonly EbsVolumeDiscoverer _volumeDiscoverer;
     private readonly EbsSnapshotDiscoverer _snapshotDiscoverer;
+    private readonly AmiDiscoverer _amiDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
         AwsIdentityService identityService,
         Ec2InstanceDiscoverer instanceDiscoverer,
         EbsVolumeDiscoverer volumeDiscoverer,
-        EbsSnapshotDiscoverer snapshotDiscoverer)
+        EbsSnapshotDiscoverer snapshotDiscoverer,
+        AmiDiscoverer amiDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
         _instanceDiscoverer = instanceDiscoverer;
         _volumeDiscoverer = volumeDiscoverer;
         _snapshotDiscoverer = snapshotDiscoverer;
+        _amiDiscoverer = amiDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -65,6 +68,12 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(snapshot => snapshot.Region)
                 .ThenBy(snapshot => snapshot.Name)
                 .ThenBy(snapshot => snapshot.SnapshotId)
+                .ToList(),
+            Images = regionalResults
+                .SelectMany(result => result.Images)
+                .OrderBy(image => image.Region)
+                .ThenBy(image => image.Name)
+                .ThenBy(image => image.ImageId)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -117,16 +126,24 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var imagesTask =
+                _amiDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
-                snapshotsTask);
+                snapshotsTask,
+                imagesTask);
 
             return new RegionalComputeResult
             {
                 Instances = await instancesTask,
                 Volumes = await volumesTask,
-                Snapshots = await snapshotsTask
+                Snapshots = await snapshotsTask,
+                Images = await imagesTask
             };
         }
         catch (Exception exception)
@@ -152,6 +169,9 @@ public sealed class AwsComputeDiscoveryService
 
         public IReadOnlyList<AwsEbsSnapshotInfo> Snapshots { get; init; } =
             Array.Empty<AwsEbsSnapshotInfo>();
+
+        public IReadOnlyList<AwsAmiInfo> Images { get; init; } =
+            Array.Empty<AwsAmiInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();

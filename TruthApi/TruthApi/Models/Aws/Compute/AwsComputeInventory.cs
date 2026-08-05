@@ -20,6 +20,9 @@ public sealed class AwsComputeInventory
     public IReadOnlyList<AwsEbsSnapshotInfo> Snapshots { get; init; } =
         Array.Empty<AwsEbsSnapshotInfo>();
 
+    public IReadOnlyList<AwsAmiInfo> Images { get; init; } =
+        Array.Empty<AwsAmiInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 
