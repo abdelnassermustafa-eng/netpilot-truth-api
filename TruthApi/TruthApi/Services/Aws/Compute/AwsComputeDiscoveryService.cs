@@ -23,6 +23,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly AutoScalingScheduledActionDiscoverer _scheduledActionDiscoverer;
     private readonly AutoScalingActivityDiscoverer _autoScalingActivityDiscoverer;
     private readonly AutoScalingLifecycleHookDiscoverer _lifecycleHookDiscoverer;
+    private readonly AutoScalingWarmPoolDiscoverer _warmPoolDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -38,7 +39,8 @@ public sealed class AwsComputeDiscoveryService
         AutoScalingPolicyDiscoverer autoScalingPolicyDiscoverer,
         AutoScalingScheduledActionDiscoverer scheduledActionDiscoverer,
         AutoScalingActivityDiscoverer autoScalingActivityDiscoverer,
-        AutoScalingLifecycleHookDiscoverer lifecycleHookDiscoverer)
+        AutoScalingLifecycleHookDiscoverer lifecycleHookDiscoverer,
+        AutoScalingWarmPoolDiscoverer warmPoolDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -54,6 +56,7 @@ public sealed class AwsComputeDiscoveryService
         _scheduledActionDiscoverer = scheduledActionDiscoverer;
         _autoScalingActivityDiscoverer = autoScalingActivityDiscoverer;
         _lifecycleHookDiscoverer = lifecycleHookDiscoverer;
+        _warmPoolDiscoverer = warmPoolDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -146,6 +149,11 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(hook => hook.Region)
                 .ThenBy(hook => hook.AutoScalingGroupName)
                 .ThenBy(hook => hook.LifecycleHookName)
+                .ToList(),
+            WarmPools = regionalResults
+                .SelectMany(result => result.WarmPools)
+                .OrderBy(pool => pool.Region)
+                .ThenBy(pool => pool.AutoScalingGroupName)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -273,7 +281,18 @@ public sealed class AwsComputeDiscoveryService
                         .ToList(),
                     cancellationToken);
 
+            var warmPoolsTask =
+                _warmPoolDiscoverer.DiscoverAsync(
+                    autoScalingClient,
+                    region,
+                    autoScalingGroups
+                        .Select(group =>
+                            group.AutoScalingGroupName)
+                        .ToList(),
+                    cancellationToken);
+
             await lifecycleHooksTask;
+            await warmPoolsTask;
 
             return new RegionalComputeResult
             {
@@ -288,7 +307,8 @@ public sealed class AwsComputeDiscoveryService
                 AutoScalingPolicies = await autoScalingPoliciesTask,
                 ScheduledActions = await scheduledActionsTask,
                 AutoScalingActivities = await autoScalingActivitiesTask,
-                LifecycleHooks = await lifecycleHooksTask
+                LifecycleHooks = await lifecycleHooksTask,
+                WarmPools = await warmPoolsTask
             };
         }
         catch (Exception exception)
@@ -354,6 +374,11 @@ public sealed class AwsComputeDiscoveryService
             LifecycleHooks
         { get; init; } =
             Array.Empty<AwsAutoScalingLifecycleHookInfo>();
+
+        public IReadOnlyList<AwsAutoScalingWarmPoolInfo>
+            WarmPools
+        { get; init; } =
+            Array.Empty<AwsAutoScalingWarmPoolInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
