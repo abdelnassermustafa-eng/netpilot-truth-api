@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TruthApi.Models;
 using TruthApi.Services;
+using TruthApi.Services.Aws;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
 
@@ -65,6 +66,14 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddSingleton<HealthService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<AwsEc2Service>();
+
+// TruthDoctor Version 2 — universal AWS service foundation
+builder.Services.AddSingleton<AwsClientFactory>();
+builder.Services.AddSingleton<AwsIdentityService>();
+builder.Services.AddSingleton<AwsRegionService>();
+builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
+builder.Services.AddSingleton<AwsResourceDiscoveryService>();
+
 builder.Services.AddSingleton<NetworkValidationService>();
 builder.Services.AddSingleton<ComputeValidator>();
 builder.Services.AddSingleton<StorageValidator>();
