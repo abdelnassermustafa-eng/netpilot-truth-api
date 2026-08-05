@@ -14,6 +14,9 @@ public sealed class AwsComputeInventory
     public IReadOnlyList<AwsEc2InstanceInfo> Instances { get; init; } =
         Array.Empty<AwsEc2InstanceInfo>();
 
+    public IReadOnlyList<AwsEbsVolumeInfo> Volumes { get; init; } =
+        Array.Empty<AwsEbsVolumeInfo>();
+
     public DateTimeOffset DiscoveredAt { get; init; } =
         DateTimeOffset.UtcNow;
 

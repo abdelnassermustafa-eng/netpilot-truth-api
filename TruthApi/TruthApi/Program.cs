@@ -91,6 +91,7 @@ builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
 
 // TruthDoctor Version 2 — AWS compute discovery
 builder.Services.AddSingleton<Ec2InstanceDiscoverer>();
+builder.Services.AddSingleton<EbsVolumeDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

@@ -11,15 +11,18 @@ public sealed class AwsComputeDiscoveryService
     private readonly AwsClientFactory _clientFactory;
     private readonly AwsIdentityService _identityService;
     private readonly Ec2InstanceDiscoverer _instanceDiscoverer;
+    private readonly EbsVolumeDiscoverer _volumeDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
         AwsIdentityService identityService,
-        Ec2InstanceDiscoverer instanceDiscoverer)
+        Ec2InstanceDiscoverer instanceDiscoverer,
+        EbsVolumeDiscoverer volumeDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
         _instanceDiscoverer = instanceDiscoverer;
+        _volumeDiscoverer = volumeDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -47,6 +50,12 @@ public sealed class AwsComputeDiscoveryService
                 .OrderBy(instance => instance.Region)
                 .ThenBy(instance => instance.Name)
                 .ThenBy(instance => instance.InstanceId)
+                .ToList(),
+            Volumes = regionalResults
+                .SelectMany(result => result.Volumes)
+                .OrderBy(volume => volume.Region)
+                .ThenBy(volume => volume.Name)
+                .ThenBy(volume => volume.VolumeId)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -81,12 +90,26 @@ public sealed class AwsComputeDiscoveryService
         {
             var client = _clientFactory.GetEc2Client(region);
 
-            return new RegionalComputeResult
-            {
-                Instances = await _instanceDiscoverer.DiscoverAsync(
+            var instancesTask =
+                _instanceDiscoverer.DiscoverAsync(
                     client,
                     region,
-                    cancellationToken)
+                    cancellationToken);
+
+            var volumesTask =
+                _volumeDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
+
+            await Task.WhenAll(
+                instancesTask,
+                volumesTask);
+
+            return new RegionalComputeResult
+            {
+                Instances = await instancesTask,
+                Volumes = await volumesTask
             };
         }
         catch (Exception exception)
@@ -106,6 +129,9 @@ public sealed class AwsComputeDiscoveryService
     {
         public IReadOnlyList<AwsEc2InstanceInfo> Instances { get; init; } =
             Array.Empty<AwsEc2InstanceInfo>();
+
+        public IReadOnlyList<AwsEbsVolumeInfo> Volumes { get; init; } =
+            Array.Empty<AwsEbsVolumeInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
