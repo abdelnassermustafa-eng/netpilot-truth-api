@@ -6,6 +6,7 @@ using TruthApi.Services;
 using TruthApi.Services.Aws;
 using TruthApi.Services.Aws.Compute;
 using TruthApi.Services.Aws.Compute.Discoverers.Core;
+using TruthApi.Services.Aws.Compute.Discoverers.Scaling;
 using TruthApi.Services.Aws.Networking;
 using TruthApi.Services.Aws.Networking.Discoverers.Core;
 using TruthApi.Services.Aws.Networking.Discoverers.Security;
@@ -96,6 +97,7 @@ builder.Services.AddSingleton<EbsSnapshotDiscoverer>();
 builder.Services.AddSingleton<AmiDiscoverer>();
 builder.Services.AddSingleton<Ec2KeyPairDiscoverer>();
 builder.Services.AddSingleton<LaunchTemplateDiscoverer>();
+builder.Services.AddSingleton<AutoScalingGroupDiscoverer>();
 builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 

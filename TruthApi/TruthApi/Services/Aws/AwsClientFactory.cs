@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Amazon;
+using Amazon.AutoScaling;
 using Amazon.EC2;
 using Amazon.SecurityToken;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,10 @@ public sealed class AwsClientFactory : IDisposable
 {
     private readonly ConcurrentDictionary<string, IAmazonEC2> _ec2Clients =
         new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly ConcurrentDictionary<string, IAmazonAutoScaling>
+        _autoScalingClients =
+            new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Lazy<IAmazonSecurityTokenService> _stsClient;
 
@@ -61,6 +66,22 @@ public sealed class AwsClientFactory : IDisposable
             });
     }
 
+    public IAmazonAutoScaling GetAutoScalingClient(
+        string? regionName = null)
+    {
+        var effectiveRegion = string.IsNullOrWhiteSpace(regionName)
+            ? DefaultRegion
+            : regionName.Trim();
+
+        return _autoScalingClients.GetOrAdd(
+            effectiveRegion,
+            static name =>
+            {
+                var endpoint = RegionEndpoint.GetBySystemName(name);
+                return new AmazonAutoScalingClient(endpoint);
+            });
+    }
+
     public void Dispose()
     {
         foreach (var client in _ec2Clients.Values)
@@ -69,6 +90,13 @@ public sealed class AwsClientFactory : IDisposable
         }
 
         _ec2Clients.Clear();
+
+        foreach (var client in _autoScalingClients.Values)
+        {
+            client.Dispose();
+        }
+
+        _autoScalingClients.Clear();
 
         if (_stsClient.IsValueCreated)
         {

@@ -1,5 +1,6 @@
 using TruthApi.Models.Aws.Compute;
 using TruthApi.Services.Aws.Compute.Discoverers.Core;
+using TruthApi.Services.Aws.Compute.Discoverers.Scaling;
 
 namespace TruthApi.Services.Aws.Compute;
 
@@ -16,6 +17,7 @@ public sealed class AwsComputeDiscoveryService
     private readonly AmiDiscoverer _amiDiscoverer;
     private readonly Ec2KeyPairDiscoverer _keyPairDiscoverer;
     private readonly LaunchTemplateDiscoverer _launchTemplateDiscoverer;
+    private readonly AutoScalingGroupDiscoverer _autoScalingGroupDiscoverer;
 
     public AwsComputeDiscoveryService(
         AwsClientFactory clientFactory,
@@ -25,7 +27,8 @@ public sealed class AwsComputeDiscoveryService
         EbsSnapshotDiscoverer snapshotDiscoverer,
         AmiDiscoverer amiDiscoverer,
         Ec2KeyPairDiscoverer keyPairDiscoverer,
-        LaunchTemplateDiscoverer launchTemplateDiscoverer)
+        LaunchTemplateDiscoverer launchTemplateDiscoverer,
+        AutoScalingGroupDiscoverer autoScalingGroupDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
@@ -35,6 +38,7 @@ public sealed class AwsComputeDiscoveryService
         _amiDiscoverer = amiDiscoverer;
         _keyPairDiscoverer = keyPairDiscoverer;
         _launchTemplateDiscoverer = launchTemplateDiscoverer;
+        _autoScalingGroupDiscoverer = autoScalingGroupDiscoverer;
     }
 
     public async Task<AwsComputeInventory> DiscoverAsync(
@@ -93,6 +97,11 @@ public sealed class AwsComputeDiscoveryService
                 .ThenBy(template => template.LaunchTemplateName)
                 .ThenBy(template => template.LaunchTemplateId)
                 .ToList(),
+            AutoScalingGroups = regionalResults
+                .SelectMany(result => result.AutoScalingGroups)
+                .OrderBy(group => group.Region)
+                .ThenBy(group => group.AutoScalingGroupName)
+                .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
                 .ToList(),
@@ -125,6 +134,7 @@ public sealed class AwsComputeDiscoveryService
         try
         {
             var client = _clientFactory.GetEc2Client(region);
+            var autoScalingClient = _clientFactory.GetAutoScalingClient(region);
 
             var instancesTask =
                 _instanceDiscoverer.DiscoverAsync(
@@ -162,13 +172,20 @@ public sealed class AwsComputeDiscoveryService
                     region,
                     cancellationToken);
 
+            var autoScalingGroupsTask =
+                _autoScalingGroupDiscoverer.DiscoverAsync(
+                    autoScalingClient,
+                    region,
+                    cancellationToken);
+
             await Task.WhenAll(
                 instancesTask,
                 volumesTask,
                 snapshotsTask,
                 imagesTask,
                 keyPairsTask,
-                launchTemplatesTask);
+                launchTemplatesTask,
+                autoScalingGroupsTask);
 
             return new RegionalComputeResult
             {
@@ -177,7 +194,8 @@ public sealed class AwsComputeDiscoveryService
                 Snapshots = await snapshotsTask,
                 Images = await imagesTask,
                 KeyPairs = await keyPairsTask,
-                LaunchTemplates = await launchTemplatesTask
+                LaunchTemplates = await launchTemplatesTask,
+                AutoScalingGroups = await autoScalingGroupsTask
             };
         }
         catch (Exception exception)
@@ -214,6 +232,10 @@ public sealed class AwsComputeDiscoveryService
         public IReadOnlyList<AwsLaunchTemplateInfo> LaunchTemplates
         { get; init; } =
             Array.Empty<AwsLaunchTemplateInfo>();
+
+        public IReadOnlyList<AwsAutoScalingGroupInfo> AutoScalingGroups
+        { get; init; } =
+            Array.Empty<AwsAutoScalingGroupInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
