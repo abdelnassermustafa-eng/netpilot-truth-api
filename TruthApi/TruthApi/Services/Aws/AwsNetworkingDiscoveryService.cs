@@ -1,6 +1,7 @@
 using Amazon.EC2.Model;
 using Ec2Route = Amazon.EC2.Model.Route;
 using TruthApi.Models.Aws.Networking;
+using TruthApi.Services.Aws.Networking.Discoverers;
 
 namespace TruthApi.Services.Aws;
 
@@ -14,13 +15,16 @@ public sealed class AwsNetworkingDiscoveryService
 {
     private readonly AwsClientFactory _clientFactory;
     private readonly AwsIdentityService _identityService;
+    private readonly VpcDiscoverer _vpcDiscoverer;
 
     public AwsNetworkingDiscoveryService(
         AwsClientFactory clientFactory,
-        AwsIdentityService identityService)
+        AwsIdentityService identityService,
+        VpcDiscoverer vpcDiscoverer)
     {
         _clientFactory = clientFactory;
         _identityService = identityService;
+        _vpcDiscoverer = vpcDiscoverer;
     }
 
     public async Task<AwsNetworkingInventory> DiscoverAsync(
@@ -139,7 +143,11 @@ public sealed class AwsNetworkingDiscoveryService
         {
             var client = _clientFactory.GetEc2Client(region);
 
-            var vpcsTask = GetAllVpcsAsync(client, region, cancellationToken);
+            var vpcsTask =
+                _vpcDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
             var subnetsTask =
                 GetAllSubnetsAsync(client, region, cancellationToken);
             var routeTablesTask =

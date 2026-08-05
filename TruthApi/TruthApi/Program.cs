@@ -4,6 +4,7 @@ using System.Text;
 using TruthApi.Models;
 using TruthApi.Services;
 using TruthApi.Services.Aws;
+using TruthApi.Services.Aws.Networking.Discoverers;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
 
@@ -71,6 +72,7 @@ builder.Services.AddSingleton<AwsEc2Service>();
 builder.Services.AddSingleton<AwsClientFactory>();
 builder.Services.AddSingleton<AwsIdentityService>();
 builder.Services.AddSingleton<AwsRegionService>();
+builder.Services.AddSingleton<VpcDiscoverer>();
 builder.Services.AddSingleton<AwsNetworkingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
