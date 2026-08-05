@@ -12,17 +12,20 @@ public sealed class AwsLoadBalancingDiscoveryService
     private readonly LoadBalancerDiscoverer _loadBalancerDiscoverer;
     private readonly ListenerDiscoverer _listenerDiscoverer;
     private readonly ListenerRuleDiscoverer _listenerRuleDiscoverer;
+    private readonly TargetGroupDiscoverer _targetGroupDiscoverer;
 
     public AwsLoadBalancingDiscoveryService(
         AwsClientFactory clientFactory,
         LoadBalancerDiscoverer loadBalancerDiscoverer,
         ListenerDiscoverer listenerDiscoverer,
-        ListenerRuleDiscoverer listenerRuleDiscoverer)
+        ListenerRuleDiscoverer listenerRuleDiscoverer,
+        TargetGroupDiscoverer targetGroupDiscoverer)
     {
         _clientFactory = clientFactory;
         _loadBalancerDiscoverer = loadBalancerDiscoverer;
         _listenerDiscoverer = listenerDiscoverer;
         _listenerRuleDiscoverer = listenerRuleDiscoverer;
+        _targetGroupDiscoverer = targetGroupDiscoverer;
     }
 
     public async Task<AwsLoadBalancingInventory> DiscoverAsync(
@@ -65,6 +68,12 @@ public sealed class AwsLoadBalancingDiscoveryService
                 .ThenBy(rule => rule.Priority)
                 .ThenBy(rule => rule.RuleArn)
                 .ToList(),
+            TargetGroups = regionalResults
+                .SelectMany(result => result.TargetGroups)
+                .OrderBy(group => group.Region)
+                .ThenBy(group => group.Name)
+                .ThenBy(group => group.TargetGroupArn)
+                .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
                 .ToList(),
@@ -97,6 +106,12 @@ public sealed class AwsLoadBalancingDiscoveryService
         {
             var client = _clientFactory.GetElbv2Client(region);
 
+            var targetGroupsTask =
+                _targetGroupDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    cancellationToken);
+
             var loadBalancers =
                 await _loadBalancerDiscoverer.DiscoverAsync(
                     client,
@@ -120,11 +135,14 @@ public sealed class AwsLoadBalancingDiscoveryService
                     listeners,
                     cancellationToken);
 
+            var targetGroups = await targetGroupsTask;
+
             return new RegionalLoadBalancingResult
             {
                 LoadBalancers = loadBalancers,
                 Listeners = listeners,
-                ListenerRules = listenerRules
+                ListenerRules = listenerRules,
+                TargetGroups = targetGroups
             };
         }
         catch (Exception exception)
@@ -154,6 +172,10 @@ public sealed class AwsLoadBalancingDiscoveryService
             ListenerRules
         { get; init; } =
             Array.Empty<AwsListenerRuleInfo>();
+
+        public IReadOnlyList<AwsTargetGroupInfo> TargetGroups
+        { get; init; } =
+            Array.Empty<AwsTargetGroupInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();

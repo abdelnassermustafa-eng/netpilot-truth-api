@@ -16,6 +16,10 @@ public sealed class AwsLoadBalancingInventory
     { get; init; } =
         Array.Empty<AwsListenerRuleInfo>();
 
+    public IReadOnlyList<AwsTargetGroupInfo> TargetGroups
+    { get; init; } =
+        Array.Empty<AwsTargetGroupInfo>();
+
     public DateTimeOffset DiscoveredAt
     { get; init; } =
         DateTimeOffset.UtcNow;

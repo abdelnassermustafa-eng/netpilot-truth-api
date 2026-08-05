@@ -113,6 +113,7 @@ builder.Services.AddSingleton<AwsComputeDiscoveryService>();
 builder.Services.AddSingleton<LoadBalancerDiscoverer>();
 builder.Services.AddSingleton<ListenerDiscoverer>();
 builder.Services.AddSingleton<ListenerRuleDiscoverer>();
+builder.Services.AddSingleton<TargetGroupDiscoverer>();
 builder.Services.AddSingleton<AwsLoadBalancingDiscoveryService>();
 builder.Services.AddSingleton<AwsResourceDiscoveryService>();
 
