@@ -114,6 +114,7 @@ builder.Services.AddSingleton<LoadBalancerDiscoverer>();
 builder.Services.AddSingleton<LoadBalancerAttributeDiscoverer>();
 builder.Services.AddSingleton<ListenerDiscoverer>();
 builder.Services.AddSingleton<ListenerRuleDiscoverer>();
+builder.Services.AddSingleton<ListenerCertificateDiscoverer>();
 builder.Services.AddSingleton<TargetGroupDiscoverer>();
 builder.Services.AddSingleton<TargetHealthDiscoverer>();
 builder.Services.AddSingleton<AwsLoadBalancingDiscoveryService>();

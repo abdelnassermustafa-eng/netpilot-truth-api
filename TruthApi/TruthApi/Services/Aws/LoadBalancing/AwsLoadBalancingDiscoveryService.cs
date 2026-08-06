@@ -13,6 +13,7 @@ public sealed class AwsLoadBalancingDiscoveryService
     private readonly LoadBalancerAttributeDiscoverer _loadBalancerAttributeDiscoverer;
     private readonly ListenerDiscoverer _listenerDiscoverer;
     private readonly ListenerRuleDiscoverer _listenerRuleDiscoverer;
+    private readonly ListenerCertificateDiscoverer _listenerCertificateDiscoverer;
     private readonly TargetGroupDiscoverer _targetGroupDiscoverer;
     private readonly TargetHealthDiscoverer _targetHealthDiscoverer;
 
@@ -22,6 +23,7 @@ public sealed class AwsLoadBalancingDiscoveryService
         LoadBalancerAttributeDiscoverer loadBalancerAttributeDiscoverer,
         ListenerDiscoverer listenerDiscoverer,
         ListenerRuleDiscoverer listenerRuleDiscoverer,
+        ListenerCertificateDiscoverer listenerCertificateDiscoverer,
         TargetGroupDiscoverer targetGroupDiscoverer,
         TargetHealthDiscoverer targetHealthDiscoverer)
     {
@@ -30,6 +32,7 @@ public sealed class AwsLoadBalancingDiscoveryService
         _loadBalancerAttributeDiscoverer = loadBalancerAttributeDiscoverer;
         _listenerDiscoverer = listenerDiscoverer;
         _listenerRuleDiscoverer = listenerRuleDiscoverer;
+        _listenerCertificateDiscoverer = listenerCertificateDiscoverer;
         _targetGroupDiscoverer = targetGroupDiscoverer;
         _targetHealthDiscoverer = targetHealthDiscoverer;
     }
@@ -92,6 +95,13 @@ public sealed class AwsLoadBalancingDiscoveryService
                 .OrderBy(attribute => attribute.Region)
                 .ThenBy(attribute => attribute.LoadBalancerArn)
                 .ThenBy(attribute => attribute.Key)
+                .ToList(),
+            ListenerCertificates = regionalResults
+                .SelectMany(result => result.ListenerCertificates)
+                .OrderBy(item => item.Region)
+                .ThenBy(item => item.ListenerArn)
+                .ThenByDescending(item => item.IsDefault)
+                .ThenBy(item => item.CertificateArn)
                 .ToList(),
             Warnings = regionalResults
                 .SelectMany(result => result.Warnings)
@@ -157,12 +167,27 @@ public sealed class AwsLoadBalancingDiscoveryService
                         .ToList(),
                     cancellationToken);
 
-            var listenerRules =
-                await _listenerRuleDiscoverer.DiscoverAsync(
+            var listenerRulesTask =
+                _listenerRuleDiscoverer.DiscoverAsync(
                     client,
                     region,
                     listeners,
                     cancellationToken);
+
+            var listenerCertificatesTask =
+                _listenerCertificateDiscoverer.DiscoverAsync(
+                    client,
+                    region,
+                    listeners,
+                    cancellationToken);
+
+            await Task.WhenAll(
+                listenerRulesTask,
+                listenerCertificatesTask);
+
+            var listenerRules = await listenerRulesTask;
+            var listenerCertificates =
+                await listenerCertificatesTask;
 
             var targetGroups = await targetGroupsTask;
 
@@ -185,6 +210,7 @@ public sealed class AwsLoadBalancingDiscoveryService
                 LoadBalancerAttributes = loadBalancerAttributes,
                 Listeners = listeners,
                 ListenerRules = listenerRules,
+                ListenerCertificates = listenerCertificates,
                 TargetGroups = targetGroups,
                 TargetHealth = targetHealth
             };
@@ -229,6 +255,11 @@ public sealed class AwsLoadBalancingDiscoveryService
             LoadBalancerAttributes
         { get; init; } =
             Array.Empty<AwsLoadBalancerAttributeInfo>();
+
+        public IReadOnlyList<AwsListenerCertificateInfo>
+            ListenerCertificates
+        { get; init; } =
+            Array.Empty<AwsListenerCertificateInfo>();
 
         public IReadOnlyList<string> Warnings { get; init; } =
             Array.Empty<string>();
