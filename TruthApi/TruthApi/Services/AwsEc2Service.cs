@@ -200,16 +200,16 @@ namespace TruthApi.Services
 
                 rows.Add(new InternetGatewayResourceRow
                 {
-                IgwId = igw.InternetGatewayId ?? "",
-                AttachedVpcIds = string.Join(",", attachedVpcs),
-                AttachmentState = state,
-                Region = Region
-            });
+                    IgwId = igw.InternetGatewayId ?? "",
+                    AttachedVpcIds = string.Join(",", attachedVpcs),
+                    AttachmentState = state,
+                    Region = Region
+                });
+            }
+
+            return rows;
         }
 
-        return rows;
-    }
-  
         // ===============================
         // NAT Gateways
         // ===============================

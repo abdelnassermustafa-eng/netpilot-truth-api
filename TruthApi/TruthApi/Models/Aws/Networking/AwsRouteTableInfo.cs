@@ -19,6 +19,14 @@ public sealed class AwsRouteTableInfo
     { get; init; } =
         Array.Empty<AwsRouteTableAssociationInfo>();
 
+    public IReadOnlyList<string> AssociatedSubnetIds
+    { get; init; } =
+        Array.Empty<string>();
+
+    public IReadOnlyList<string> RouteTargets
+    { get; init; } =
+        Array.Empty<string>();
+
     public IReadOnlyDictionary<string, string> Tags { get; init; } =
         new Dictionary<string, string>();
 }

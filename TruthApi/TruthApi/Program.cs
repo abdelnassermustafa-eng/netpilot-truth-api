@@ -1,3 +1,8 @@
+using TruthApi.Services.Platform.State;
+using TruthApi.Services.Platform.State.Adapters;
+using TruthApi.Services.Platform.Catalog;
+using TruthApi.Services.Platform;
+using TruthApi.Services.Platform.Operations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -17,6 +22,26 @@ using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Universal infrastructure-state engine
+builder.Services.AddSingleton<AwsInventoryNormalizer>();
+builder.Services.AddSingleton<AwsRelationshipBuilder>();
+builder.Services.AddSingleton<InfrastructureStateService>();
+
+builder.Services.AddSingleton<AwsNetworkingResourceAdapter>();
+
+// Provider and domain capability catalog
+builder.Services.AddSingleton<
+    IPlatformCatalogContributor,
+    AwsPlatformCatalogContributor>();
+builder.Services.AddSingleton<PlatformCatalogService>();
+
+// Platform operation tracking
+builder.Services.AddSingleton<IOperationStore, JsonFileOperationStore>();
+builder.Services.AddSingleton<OperationService>();
+builder.Services.AddSingleton<
+    IOperationManager,
+    OperationManager>();
 
 // Add services to the container.
 builder.Services.AddControllers()

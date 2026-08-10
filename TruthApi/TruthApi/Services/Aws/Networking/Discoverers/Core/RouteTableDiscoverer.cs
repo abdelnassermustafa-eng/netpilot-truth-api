@@ -54,9 +54,35 @@ public sealed class RouteTableDiscoverer
                     Associations = associations
                         .Select(ToAssociationInfo)
                         .ToList(),
+
+                    AssociatedSubnetIds = associations
+                        .Select(association =>
+                            association.SubnetId ?? "")
+                        .Where(subnetId =>
+                            !string.IsNullOrWhiteSpace(subnetId))
+                        .Distinct(
+                            StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(subnetId => subnetId)
+                        .ToList(),
+
                     Routes = routes
                         .Select(ToRouteInfo)
                         .ToList(),
+
+                    RouteTargets = routes
+                        .Select(ToRouteInfo)
+                        .Where(route =>
+                            !string.IsNullOrWhiteSpace(
+                                route.TargetType) &&
+                            !string.IsNullOrWhiteSpace(
+                                route.TargetId))
+                        .Select(route =>
+                            $"{route.TargetType}|{route.TargetId}")
+                        .Distinct(
+                            StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(value => value)
+                        .ToList(),
+
                     Tags = tags
                 });
             }

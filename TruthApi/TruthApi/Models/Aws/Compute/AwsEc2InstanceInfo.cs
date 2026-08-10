@@ -71,6 +71,9 @@ public sealed class AwsEc2InstanceInfo
     { get; init; } =
         Array.Empty<AwsInstanceSecurityGroupInfo>();
 
+    public IReadOnlyList<string> SecurityGroupIds { get; init; } =
+        Array.Empty<string>();
+
     public IReadOnlyList<AwsInstanceBlockDeviceInfo> BlockDevices
     { get; init; } =
         Array.Empty<AwsInstanceBlockDeviceInfo>();

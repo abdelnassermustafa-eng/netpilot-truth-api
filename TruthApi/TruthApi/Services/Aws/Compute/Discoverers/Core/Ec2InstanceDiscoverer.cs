@@ -119,6 +119,15 @@ public sealed class Ec2InstanceDiscoverer
                                     })
                                 .ToList(),
 
+                        SecurityGroupIds =
+                            (instance.SecurityGroups ?? [])
+                                .Select(group => group.GroupId ?? "")
+                                .Where(id =>
+                                    !string.IsNullOrWhiteSpace(id))
+                                .Distinct(
+                                    StringComparer.OrdinalIgnoreCase)
+                                .ToList(),
+
                         BlockDevices =
                             (instance.BlockDeviceMappings ?? [])
                                 .Select(ToBlockDeviceInfo)
